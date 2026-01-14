@@ -9,6 +9,7 @@ class Subscription(Base):
     id = Column(Integer, primary_key=True, index=True)
     member_id = Column(Integer, ForeignKey("members.id", ondelete="CASCADE"), nullable=False)
     plan_id = Column(Integer, ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False)
+    plan_price = Column(DECIMAL(10, 2), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     status = Column(String(20), nullable=False, default="active")

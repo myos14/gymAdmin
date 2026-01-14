@@ -37,12 +37,23 @@ class SubscriptionUpdate(BaseModel):
     amount_paid: Optional[Decimal] = Field(None, ge=0)
     notes: Optional[str] = None
 
+class MemberBase(BaseModel):
+    id: int
+    first_name: str
+    last_name_paternal: str
+    last_name_maternal: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class SubscriptionResponse(SubscriptionBase):
     id: int
+    plan_price: Decimal
     end_date: date
     status: str
     created_at: datetime
     plan: PlanBase
+    member: MemberBase
 
     class Config:
         from_attributes = True

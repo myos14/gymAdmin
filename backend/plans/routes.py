@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database import get_db
 from plans.models import Plan
@@ -30,7 +30,7 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=List[PlanResponse])
 def get_plans(
-    active_only: bool = True,
+    active_only: Optional[bool] = None,
     skip : int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -38,8 +38,8 @@ def get_plans(
     """Listar todos los planes disponibles"""
     query = db.query(Plan)
     
-    if active_only:
-        query = query.filter(Plan.is_active == True)
+    if active_only is not None:
+        query = query.filter(Plan.is_active == active_only)
         
     plans = query.offset(skip).limit(limit).all()
     
@@ -51,7 +51,7 @@ def get_plan(plan_id: int, db: Session = Depends(get_db)):
     plan = db.query(Plan).filter(Plan.id == plan_id).first()
     
     if not plan:
-        raise HTTPException(status_code=404, detail="Plano no encontrado")
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
     
     return plan
 
@@ -65,7 +65,7 @@ def update_plan(
     db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
     
     if not db_plan:
-        raise HTTPException(status_code=404, detail="Plano no encontrado")
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
     
     #Check if new name conflicts with existing plan
     if plan_update.name and plan_update.name != db_plan.name:
@@ -92,7 +92,7 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db)):
     db_plan = db.query(Plan).filter(Plan.id == plan_id).first()
     
     if not db_plan:
-        raise HTTPException(status_code=404, detail="Plano no encontrado")
+        raise HTTPException(status_code=404, detail="Plan no encontrado")
     
     # Soft delete - just mark it as inactive
     db_plan.is_active = False

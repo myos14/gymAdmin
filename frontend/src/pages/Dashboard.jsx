@@ -1,102 +1,136 @@
 import { useState, useEffect } from 'react';
-import { Users, Activity, CreditCard, UserCheck } from 'lucide-react';
-import { attendanceService } from '../services/attendanceService';
-import {memberService } from '../services/memberService';
+import { Users, ClipboardCheck, UserCheck, CreditCard, DollarSign, AlertCircle } from 'lucide-react';
+import StatsCard from '../components/dashboard/StatsCard';
+import ExpiringSubscriptions from '../components/dashboard/ExpiringSubscriptions';
+import RecentPayments from '../components/dashboard/RecentPayments';
+import WeeklyChart from '../components/dashboard/WeeklyChart';
+import IncomeChart from '../components/dashboard/IncomeChart';
+import PlanMetrics from '../components/dashboard/PlanMetrics';
+import { dashboardService } from '../services/dashboardService';
 
 function Dashboard() {
-    const [stats, setStats] = useState({
-        currentInGym: 0,
-        totalToday: 0,
-        uniqueToday: 0,
-        totalMembers: 0,
-        activeSubscriptions: 0
-    });
+    const [dashboardData, setDashboardData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        loadStats();
-        // Refresh every 30 sec
-        const interval = setInterval(loadStats, 30000);
-        return () => clearInterval(interval);
+        loadDashboard();
     }, []);
 
-    const loadStats = async () => {
+    const loadDashboard = async () => {
         try {
-            const [dailyStats, currentInGym, members] = await Promise.all([
-                attendanceService.getDailyStats(),
-                attendanceService.getCurrentInGym(),
-                memberService.getAllMembers()
-            ]);
-
-            setStats({
-                currentInGym: currentInGym.length,
-                totalToday: dailyStats.total_visits,
-                uniqueToday: dailyStats.unique_members,
-                totalMembers: members.length,
-                activeSubscriptions: members.filter(m => m.membership_status === 'active').length
+            setLoading(true);
+            setError(null);
+            const data = await dashboardService.getDashboardSummary({
+                expiring_days: 7,
+                recent_limit: 5,
+                stats_days: 7
             });
-        } catch (error) {
-            console.error('Error loading stats:', error);
+            setDashboardData(data);
+        } catch (err) {
+            console.error('Error loading dashboard:', err);
+            setError('Error al cargar el dashboard');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const statsCards = [
-        {
-            title: 'EN EL GYM AHORA',
-            value: stats.currentInGym,
-            subtitle: null,
-            icon: Activity,
-            bgColor: 'bg-primary-600',
-        },
-        {
-            title:'ASISTENCIAS HOY',
-            value: stats.totalToday,
-            subtitle: `${stats.uniqueToday} clientes únicos`,
-            icon: UserCheck,
-            bgColor: 'bg-primary-700'
-        },
-        {
-            title:'CLIENTES TOTALES',
-            value: stats.totalMembers,
-            subtitle: null,
-            icon: Users,
-            bgColor: 'bg-primary-800'
-        },
-        {
-            title:'SUSCRIPCIONES ACTIVAS',
-            value: stats.activeSubscriptions,
-            subtitle: null,
-            icon: CreditCard,
-            bgColor: 'bg-primary-900'
-        },
-    ];
+    const formatPrice = (price) => {
+        return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+            minimumFractionDigits: 0
+        }).format(price);
+    };
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                    <p className="text-error-600 mb-4">{error}</p>
+                    <button
+                        onClick={loadDashboard}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <h2 className="text-3xl font-bold text-text-primary mb-8">Dashboard</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {statsCards.map((stat, index) => {
-                    const Icon = stat.icon;
-                    return (
-                        <div
-                            key={index}
-                            className={`${stat.bgColor} rounded-lg shadow-md p-6 text-white hover:shadow-lg transition-shadow`}
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-sm font-medium uppercase tracking-wide opacity-90">
-                                        {stat.title}
-                                    </h3>
-                                    <Icon className="h-6 w-6 opacity-80" />
-                                </div>
-                                <p className="text-4xl font-bold mb-1">{stat.value}</p>
-                                {stat.subtitle && (
-                                    <p className="text-sm opacity-75">{stat.subtitle}</p>
-                                )}
-                            </div>
-                    );
-                })}
+        <div className="p-12 space-y-6 bg-primary-50 min-h-screen">
+            {/* 6 Cards compactos */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                <StatsCard
+                    title="En el Gym Ahora"
+                    value={loading ? '...' : dashboardData?.metrics.current_in_gym || 0}
+                    icon={UserCheck}
+                    color="bg-primary-700"
+                />
+                <StatsCard
+                    title="Asistencias Hoy"
+                    value={loading ? '...' : dashboardData?.metrics.today_visits || 0}
+                    subtitle={loading ? '' : `${dashboardData?.metrics.current_in_gym || 0} miembros únicos`}
+                    icon={ClipboardCheck}
+                    color="bg-primary-600"
+                />
+                <StatsCard
+                    title="Miembros Totales"
+                    value={loading ? '...' : dashboardData?.metrics.total_members || 0}
+                    icon={Users}
+                    color="bg-primary-500"
+                />
+                <StatsCard
+                    title="Suscripciones Activas"
+                    value={loading ? '...' : dashboardData?.metrics.active_subscriptions || 0}
+                    icon={CreditCard}
+                    color="bg-primary-800"
+                />
+                <StatsCard
+                    title="Ingresos Hoy"
+                    value={loading ? '...' : formatPrice(dashboardData?.payment_metrics.today_income || 0)}
+                    icon={DollarSign}
+                    color="bg-success-600"
+                />
+                <StatsCard
+                    title="Pagos Pendientes"
+                    value={loading ? '...' : formatPrice(dashboardData?.payment_metrics.pending_payments || 0)}
+                    icon={AlertCircle}
+                    color="bg-warning-600"
+                />
             </div>
-        </main>
+
+            {/* Alertas y Metricas */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <PlanMetrics
+                    planMetrics={dashboardData?.plan_metrics || []}
+                    loading={loading}
+                />
+                <ExpiringSubscriptions
+                    subscriptions={dashboardData?.expiring_subscriptions || []}
+                    loading={loading}
+                    onRefresh={loadDashboard}
+                />
+                <RecentPayments
+                    payments={dashboardData?.recent_payments || []}
+                    loading={loading}
+                />
+            </div>
+
+            {/* Gráficos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <WeeklyChart
+                    data={dashboardData?.weekly_stats || []}
+                    loading={loading}
+                />
+                <IncomeChart
+                    data={dashboardData?.weekly_income || []}
+                    loading={loading}
+                />
+            </div>
+        </div>
     );
 }
 

@@ -1,16 +1,16 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
-    baseURL : API_URL,
+    baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
     },
 });
 
-// Configurate interceptors to manage auth token
-axios.interceptors.request.use(
+// Configure interceptors to manage auth token
+api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -24,7 +24,7 @@ axios.interceptors.request.use(
 );
 
 // Interceptor to handle 401 errors
-axios.interceptors.response.use(
+api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
@@ -46,7 +46,7 @@ export const checkIn = (data) => api.post('/attendance/check-in', data);
 export const checkOut = (id, data) => api.put(`/attendance/${id}/check-out`, data);
 export const getCurrentInGym = () => api.get('/attendance/current/in-gym');
 export const getDailyStats = (date) => api.get('/attendance/stats/daily', {params: {target_date: date} });
-export const getAttendances = (params) => api.get('/attendance/', {params})
+export const getAttendances = (params) => api.get('/attendance/', {params});
 
 // Subscriptions
 export const getSubscriptions = (params) => api.get('/subscriptions/', { params });
@@ -55,13 +55,12 @@ export const getMemberActiveSubscription = (memberId) => api.get(`/subscriptions
 export const createSubscription = (data) => api.post('/subscriptions/', data);
 export const updateSubscription = (id, data) => api.put(`/subscriptions/${id}`, data);
 export const deleteSubscription = (id) => api.delete(`/subscriptions/${id}`);
+
 // Plans
 export const getPlans = (params) => api.get('/plans/', {params});
 export const getPlanById = (id) => api.get(`/plans/${id}`); 
 export const createPlan = (data) => api.post('/plans/', data);
 export const updatePlan = (id, data) => api.put(`/plans/${id}`, data);
 export const deletePlan = (id) => api.delete(`/plans/${id}`);
-
-// Subscriptions
 
 export default api;

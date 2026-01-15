@@ -103,7 +103,7 @@ function Login() {
                 {/* Info */}
                 <div className="mt-6 p-4 bg-info-50 rounded-lg">
                     <p className="text-xs text-info-800 text-center">
-                        <strong>Demo:</strong> admin / admin123 (Administrador) | recepcion / recepcion123 (Recepcionista)
+                        <strong>Datos de prueba:</strong> admin / admin123 | recepcion / recepcion123
                     </p>
                 </div>
             </div>

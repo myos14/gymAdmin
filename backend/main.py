@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 import os
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
+from database import get_db
+
 
 load_dotenv()
 
@@ -43,6 +46,63 @@ app.include_router(attendance_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+
+@app.post("/api/setup-users", include_in_schema=False)
+def setup_users(db: Session = Depends(get_db)):
+    """
+    Endpoint temporal para crear usuarios iniciales.
+    """
+    from users.models import User
+    from users.auth import get_password_hash
+    
+    created_users = []
+    
+    admin = db.query(User).filter(User.username == "admin").first()
+    if not admin:
+        admin = User(
+            username="admin",
+            email="admin@fuerzafit.com",
+            full_name="Administrador",
+            role="admin",
+            hashed_password=get_password_hash("admin123"),
+            is_active=True
+        )
+        db.add(admin)
+        created_users.append({
+            "username": "admin",
+            "password": "admin123",
+            "role": "admin"
+        })
+    
+    recep = db.query(User).filter(User.username == "recepcion").first()
+    if not recep:
+        recep = User(
+            username="recepcion",
+            email="recepcion@fuerzafit.com",
+            full_name="Recepcionista",
+            role="employee",
+            hashed_password=get_password_hash("recepcion123"),
+            is_active=True
+        )
+        db.add(recep)
+        created_users.append({
+            "username": "recepcion",
+            "password": "recepcion123",
+            "role": "employee"
+        })
+    
+    if created_users:
+        db.commit()
+        return {
+            "message": "Usuarios creados exitosamente",
+            "users": created_users,
+            "status": "created"
+        }
+    else:
+        return {
+            "message": "Los usuarios ya existen",
+            "status": "exists"
+        }
 
 @app.get("/")
 def read_root():

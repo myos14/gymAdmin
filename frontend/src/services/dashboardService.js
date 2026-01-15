@@ -1,4 +1,4 @@
-const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/dashboard`;
+import api from './api';
 
 export const dashboardService = {
     getDashboardSummary: async (params = {}) => {
@@ -7,12 +7,7 @@ export const dashboardService = {
         if (params.recent_limit) queryParams.append('recent_limit', params.recent_limit);
         if (params.stats_days) queryParams.append('stats_days', params.stats_days);
 
-        const response = await fetch(`${API_URL}/dashboard/summary?${queryParams}`);
-        
-        if (!response.ok) {
-        throw new Error('Error al obtener datos del dashboard');
-        }
-
-        return response.json();
+        const response = await api.get(`/dashboard/summary?${queryParams}`);
+        return response.data;
     }
 };

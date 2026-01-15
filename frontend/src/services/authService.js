@@ -1,10 +1,8 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+import api from './api';
 
 export const authService = {
     login: async (username, password) => {
-        const response = await axios.post(`${API_URL}/auth/login`, {
+        const response = await api.post('/auth/login', {
             username,
             password
         });
@@ -12,18 +10,12 @@ export const authService = {
     },
 
     register: async (userData) => {
-        const token = localStorage.getItem('token');
-        const response = await axios.post(`${API_URL}/auth/register`, userData, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.post('/auth/register', userData);
         return response.data;
     },
 
     getMe: async () => {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.get('/auth/me');
         return response.data;
     }
 };

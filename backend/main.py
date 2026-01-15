@@ -47,7 +47,7 @@ app.include_router(payments_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 
-@app.post("/api/setup-users", include_in_schema=False)
+@app.get("/api/setup-users", include_in_schema=False)
 def setup_users(db: Session = Depends(get_db)):
     """
     Endpoint temporal para crear usuarios iniciales.

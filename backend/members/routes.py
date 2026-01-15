@@ -7,7 +7,7 @@ from .schemas import MemberResponse, MemberCreate, MemberUpdate
 from datetime import date, datetime
 from typing import Optional
 
-router = APIRouter(prefix="/api/members", tags=["Members"])
+router = APIRouter(prefix="/members", tags=["Members"])
 
 # helper function
 def capitalize_name(name: str) -> str:

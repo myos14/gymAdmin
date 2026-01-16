@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import os
 from dotenv import load_dotenv
+from users.models import User
 
 load_dotenv()
 
@@ -68,11 +69,11 @@ def get_current_active_user(current_user = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Usuario inactivo")
     return current_user
 
-def require_admin(current_user = Depends(get_current_active_user)):
+def require_admin(current_user: User = Depends(get_current_user)):
     """Verificar que el usuario sea admin"""
     if current_user.role != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos de administrador"
+            status_code=403,
+            detail="No tienes permisos para realizar esta acción"
         )
     return current_user

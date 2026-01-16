@@ -19,4 +19,4 @@ services:
 databases:
   - name: f3-manager-db
     databaseName: gym_db
-    user: gym_user
+    user: gym_user 

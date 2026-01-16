@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { LogIn, User, Lock, AlertCircle } from 'lucide-react';
 
 function Login() {
@@ -20,7 +21,7 @@ function Login() {
             navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err);
-            setError(err.response?.data?.detail || 'Error al iniciar sesión');
+            setError('Usuario o contraseña incorrectos');
         } finally {
             setLoading(false);
         }

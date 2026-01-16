@@ -55,7 +55,6 @@ def get_plans(
 def get_plan(
     plan_id: int, 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
 ):
     """Obtener un plan específico"""
     plan = db.query(Plan).filter(Plan.id == plan_id).first()

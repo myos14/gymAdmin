@@ -38,8 +38,7 @@ def get_plans(
     active_only: Optional[bool] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Listar todos los planes disponibles"""
     query = db.query(Plan)

@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import MembersList from './pages/MembersList';
 import PlansList from './pages/PlansList';
 import SubscriptionsList from './pages/SubscriptionsList';
+import Reports from './pages/Reports';
 
 function App() {
   return (
@@ -26,8 +27,14 @@ function App() {
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/miembros" element={<MembersList />} />
-                    
-                    {/* Planes - Solo Admin */}
+                    <Route
+                      path="/reportes"
+                      element={
+                        <ProtectedRoute requireAdmin>
+                          <Reports />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route
                       path="/planes"
                       element={
@@ -36,8 +43,6 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
-                    
-                    {/* Suscripciones - Todos pueden ver */}
                     <Route path="/suscripciones" element={<SubscriptionsList />} />
                   </Routes>
                 </Layout>

@@ -23,7 +23,7 @@ function PlanModal({ plan, onClose, onSuccess }) {
             });
             
             // Check if duration is custom (not in predefined options)
-            const predefinedDurations = [1, 7, 30, 60, 90, 180, 365];
+            const predefinedDurations = [0, 1, 7, 30, 60, 90, 180, 365];
             if (plan.duration_days && !predefinedDurations.includes(plan.duration_days)) {
                 setIsCustomDuration(true);
             }
@@ -43,7 +43,7 @@ function PlanModal({ plan, onClose, onSuccess }) {
     const handleDurationChange = (e) => {
         const value = e.target.value;
         
-        if (value === '0') {
+        if (value === 'custom') {
             // User selected "Personalizado..."
             setIsCustomDuration(true);
             setFormData(prev => ({ ...prev, duration_days: '' }));
@@ -66,12 +66,20 @@ function PlanModal({ plan, onClose, onSuccess }) {
             newErrors.name = 'Campo obligatorio';
         }
 
-        if (!formData.price || parseFloat(formData.price) <= 0) {
-            newErrors.price = 'El precio debe ser mayor a 0';
+        const price = parseFloat(formData.price);
+        if (isNaN(price) || price < 0) {
+            newErrors.price = 'El precio debe ser mayor o igual a 0';
+        }
+        if (price > 100000) {
+            newErrors.price = 'El precio no puede exceder $100,000';
         }
 
-        if (!formData.duration_days || parseInt(formData.duration_days) <= 0) {
-            newErrors.duration_days = 'El número de días debe ser mayor a 0';
+        const duration = parseInt(formData.duration_days);
+        if (isNaN(duration) || duration < 0) {
+            newErrors.duration_days = 'La duración debe ser 0 o mayor';
+        }
+        if (duration > 3650) {
+            newErrors.duration_days = 'Máximo 3650 días (10 años). Usa 0 para permanente';
         }
 
         setErrors(newErrors);
@@ -123,6 +131,7 @@ function PlanModal({ plan, onClose, onSuccess }) {
     };
 
     const durationOptions = [
+        { value: 0, label: 'Permanente (sin vencimiento)' },
         { value: 1, label: '1 día (Pase diario)' },
         { value: 7, label: '1 semana' },
         { value: 30, label: '1 mes' },
@@ -130,14 +139,14 @@ function PlanModal({ plan, onClose, onSuccess }) {
         { value: 90, label: '3 meses' },
         { value: 180, label: '6 meses' },
         { value: 365, label: '1 año' },
-        { value: 0, label: 'Personalizado...' }
+        { value: 'custom', label: 'Personalizado...' }
     ];
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
                     <h3 className="text-xl font-semibold text-text-primary">
                         {plan ? 'Editar Plan' : 'Nuevo Plan'}
                     </h3>
@@ -215,28 +224,34 @@ function PlanModal({ plan, onClose, onSuccess }) {
                                 ))}
                             </select>
                         ) : (
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    name="duration_days"
-                                    value={formData.duration_days}
-                                    onChange={handleChange}
-                                    placeholder="Ingresa número de días"
-                                    min="1"
-                                    className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                                        errors.duration_days ? 'border-red-500' : 'border-gray-300'
-                                    }`}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsCustomDuration(false);
-                                        setFormData(prev => ({ ...prev, duration_days: '' }));
-                                    }}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
-                                >
-                                    Volver
-                                </button>
+                            <div className="space-y-2">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        name="duration_days"
+                                        value={formData.duration_days}
+                                        onChange={handleChange}
+                                        placeholder="Ingresa número de días"
+                                        min="0"
+                                        max="3650"
+                                        className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                                            errors.duration_days ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsCustomDuration(false);
+                                            setFormData(prev => ({ ...prev, duration_days: '' }));
+                                        }}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+                                    >
+                                        Volver
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    💡 <strong>0 días</strong> = Permanente (sin vencimiento) | <strong>1-3650</strong> = Días específicos (máx 10 años)
+                                </p>
                             </div>
                         )}
                         {errors.duration_days && (
@@ -260,7 +275,7 @@ function PlanModal({ plan, onClose, onSuccess }) {
                     </div>
 
                     {/* Buttons */}
-                    <div className="flex justify-end gap-3 pt-4">
+                    <div className="flex justify-end gap-3 pt-4 border-t">
                         <button
                             type="button"
                             onClick={() => onClose(false)}

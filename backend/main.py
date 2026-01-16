@@ -14,6 +14,7 @@ from attendance.routes import router as attendance_router
 from payments.routes import router as payments_router
 from dashboard.routes import router as dashboard_router
 from users.routes import router as users_router
+from reports.routes import router as reports_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -43,6 +44,7 @@ app.include_router(attendance_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(reports_router, prefix="/api")
 
 @app.get("/")
 def read_root():

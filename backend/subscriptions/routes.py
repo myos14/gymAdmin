@@ -3,15 +3,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List, Optional
 from datetime import date, timedelta
-from pydantic import BaseModel  # ← NUEVO
+from pydantic import BaseModel
+from decimal import Decimal
 
 from database import get_db
 from subscriptions.models import Subscription
 from members.models import Member
 from plans.models import Plan
+from payments.models import PaymentRecord
 from subscriptions.schemas import SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse
+from users.auth import get_current_active_user, require_admin  # ← IMPORTANTE
+from users.models import User
 
-# ← NUEVO SCHEMA
 class SubscriptionRenew(BaseModel):
     plan_id: Optional[int] = None
     start_date: Optional[date] = None
@@ -22,14 +25,24 @@ class SubscriptionRenew(BaseModel):
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 def calculate_end_date(start_date: date, duration_days: int) -> date:
+    """Calcular fecha de fin, manejando planes permanentes"""
+    if duration_days == 0:
+        # Plan permanente: 100 años
+        return start_date + timedelta(days=36500)
     return start_date + timedelta(days=duration_days)
 
 def update_subscription_status(subscription: Subscription):
     if subscription.end_date < date.today() and subscription.status == "active":
         subscription.status = "expired"
 
+# ✅ CREAR SUSCRIPCIÓN - Cualquier usuario autenticado
 @router.post("/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
-def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(get_db)):
+def create_subscription(
+    subscription: SubscriptionCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # ← Protegido
+):
+    """Crear nueva suscripción (requiere autenticación)"""
     member = db.query(Member).filter(Member.id == subscription.member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado")
@@ -38,6 +51,7 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
     
+    # Verificar si ya tiene suscripción activa
     active_sub = db.query(Subscription).filter(
         and_(
             Subscription.member_id == subscription.member_id,
@@ -52,6 +66,7 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
             detail=f"El miembro ya tiene una suscripción activa que vence el {active_sub.end_date}"
         )
     
+    # Calcular fecha de fin (manejando planes permanentes)
     end_date = calculate_end_date(subscription.start_date, plan.duration_days)
     
     db_subscription = Subscription(
@@ -62,27 +77,17 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     )
     
     db.add(db_subscription)
-    db.flush()  # ← Obtener el ID antes de commit
+    db.flush()  # Obtener ID antes de commit
     
-    from payments.models import PaymentRecord
-    from decimal import Decimal
-    
+    # Crear registro de pago automático
     payment_amount = subscription.amount_paid if subscription.amount_paid > 0 else plan.price
-    payment_method = subscription.payment_status if subscription.payment_status else "efectivo"
-    
-    # Mapear payment_status a payment_method si es necesario
-    method_map = {
-        "paid": "efectivo",
-        "pending": "efectivo",
-        "partial": "efectivo"
-    }
     
     db_payment = PaymentRecord(
         subscription_id=db_subscription.id,
         member_id=subscription.member_id,
         amount=Decimal(str(payment_amount)),
         payment_date=subscription.start_date,
-        payment_method="efectivo",  # Por defecto efectivo
+        payment_method="efectivo",
         notes=f"Pago automático al crear suscripción {plan.name}"
     )
     
@@ -97,16 +102,15 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     
     return db_subscription
 
+# ✅ RENOVAR SUSCRIPCIÓN - Cualquier usuario autenticado
 @router.post("/{subscription_id}/renew", response_model=SubscriptionResponse)
 def renew_subscription(
     subscription_id: int,
     renew_data: SubscriptionRenew = Body(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # ← Protegido
 ):
-    """
-    Renew an expired or expiring subscription.
-    Allows changing the plan if desired.
-    """
+    """Renovar suscripción (requiere autenticación)"""
     old_subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
     
     if not old_subscription:
@@ -118,13 +122,13 @@ def renew_subscription(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
     
-    # Check if member already has another active subscription
+    # Verificar si ya tiene otra suscripción activa
     active_sub = db.query(Subscription).filter(
         and_(
             Subscription.member_id == old_subscription.member_id,
             Subscription.status == "active",
             Subscription.end_date >= date.today(),
-            Subscription.id != subscription_id  # Exclude current subscription
+            Subscription.id != subscription_id
         )
     ).first()
     
@@ -134,13 +138,10 @@ def renew_subscription(
             detail=f"El miembro ya tiene otra suscripción activa que vence el {active_sub.end_date}"
         )
     
-    # Calculate new dates
+    # Calcular nuevas fechas
     if renew_data.start_date:
-        # Use provided start date
         new_start_date = renew_data.start_date
     else:
-        # Auto-calculate: If old subscription hasn't expired yet, start from end_date + 1
-        # If it already expired, start from today
         if old_subscription.end_date >= date.today():
             new_start_date = old_subscription.end_date + timedelta(days=1)
         else:
@@ -148,7 +149,7 @@ def renew_subscription(
     
     new_end_date = calculate_end_date(new_start_date, plan.duration_days)
     
-    # Create new subscription
+    # Crear nueva suscripción
     new_subscription = Subscription(
         member_id=old_subscription.member_id,
         plan_id=plan_id,
@@ -161,15 +162,13 @@ def renew_subscription(
         notes=renew_data.notes
     )
     
-    # Mark old subscription as expired
+    # Marcar vieja como expirada
     old_subscription.status = "expired"
     
     db.add(new_subscription)
     db.flush()
     
-    from payments.models import PaymentRecord
-    from decimal import Decimal
-    
+    # Crear pago automático
     payment_amount = renew_data.amount_paid if renew_data.amount_paid and renew_data.amount_paid > 0 else plan.price
     
     db_payment = PaymentRecord(
@@ -191,14 +190,17 @@ def renew_subscription(
     
     return new_subscription
 
+# ✅ LISTAR SUSCRIPCIONES - Cualquier usuario autenticado
 @router.get("/", response_model=List[SubscriptionResponse])
 def get_subscriptions(
     status: Optional[str] = Query(None, pattern="^(active|expired|cancelled)$"),
     member_id: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # ← Protegido
 ):
+    """Obtener lista de suscripciones (requiere autenticación)"""
     query = db.query(Subscription)
     
     if status:
@@ -214,8 +216,14 @@ def get_subscriptions(
     db.commit()
     return subscriptions
 
+# ✅ VER SUSCRIPCIÓN ESPECÍFICA - Cualquier usuario autenticado
 @router.get("/{subscription_id}", response_model=SubscriptionResponse)
-def get_subscription(subscription_id: int, db: Session = Depends(get_db)):
+def get_subscription(
+    subscription_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # ← Protegido
+):
+    """Obtener suscripción por ID (requiere autenticación)"""
     subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
     
     if not subscription:
@@ -226,12 +234,15 @@ def get_subscription(subscription_id: int, db: Session = Depends(get_db)):
     
     return subscription
 
+# ✅ ACTUALIZAR SUSCRIPCIÓN - Solo Admin
 @router.put("/{subscription_id}", response_model=SubscriptionResponse)
 def update_subscription(
     subscription_id: int,
     subscription_update: SubscriptionUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)  # ← Solo Admin
 ):
+    """Actualizar suscripción (solo admin)"""
     db_subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
     
     if not db_subscription:
@@ -246,8 +257,14 @@ def update_subscription(
     
     return db_subscription
 
+# ✅ ELIMINAR SUSCRIPCIÓN - Solo Admin
 @router.delete("/{subscription_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_subscription(subscription_id: int, db: Session = Depends(get_db)):
+def delete_subscription(
+    subscription_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)  # ← Solo Admin
+):
+    """Eliminar suscripción (solo admin)"""
     db_subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
     
     if not db_subscription:
@@ -258,8 +275,14 @@ def delete_subscription(subscription_id: int, db: Session = Depends(get_db)):
     
     return None
 
+# ✅ SUSCRIPCIÓN ACTIVA DEL MIEMBRO - Cualquier usuario autenticado
 @router.get("/member/{member_id}/active", response_model=Optional[SubscriptionResponse])
-def get_member_active_subscription(member_id: int, db: Session = Depends(get_db)):
+def get_member_active_subscription(
+    member_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)  # ← Protegido
+):
+    """Obtener suscripción activa de un miembro (requiere autenticación)"""
     member = db.query(Member).filter(Member.id == member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado")

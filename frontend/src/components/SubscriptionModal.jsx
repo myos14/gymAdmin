@@ -75,8 +75,14 @@ function SubscriptionModal({ onClose, onSuccess }) {
         
         const start = new Date(formData.start_date);
         const end = new Date(start);
-        end.setDate(end.getDate() + plan.duration_days);
         
+        // Si es plan permanente (0 días), mostrar mensaje especial
+        if (plan.duration_days === 0) {
+            setEndDate('permanent');
+            return;
+        }
+        
+        end.setDate(end.getDate() + plan.duration_days);
         setEndDate(end.toISOString().split('T')[0]);
     };
 
@@ -136,23 +142,26 @@ function SubscriptionModal({ onClose, onSuccess }) {
         } catch (error) {
             console.error('Error creating subscription:', error);
         
-        if (error.response?.data?.detail) {
-            const detail = error.response.data.detail;
-            if (typeof detail === 'string') {
-                onSuccess(detail, 'error');
-            } else if (Array.isArray(detail)) {
-                const errorMsg = detail.map(err => err.msg).join(', ');
-                onSuccess(errorMsg, 'error');
+            if (error.response?.data?.detail) {
+                const detail = error.response.data.detail;
+                if (typeof detail === 'string') {
+                    onSuccess(detail, 'error');
+                } else if (Array.isArray(detail)) {
+                    const errorMsg = detail.map(err => err.msg).join(', ');
+                    onSuccess(errorMsg, 'error');
+                }
+            } else {
+                onSuccess('Error al crear suscripción', 'error');
             }
-        } else {
-            onSuccess('Error al crear suscripción', 'error');
-        }
         } finally {
             setLoading(false);
         }
     };
 
     const formatDate = (dateString) => {
+        if (dateString === 'permanent') {
+            return 'Sin vencimiento';
+        }
         const date = new Date(dateString);
         return date.toLocaleDateString('es-MX', { 
             year: 'numeric', 
@@ -162,10 +171,19 @@ function SubscriptionModal({ onClose, onSuccess }) {
     };
 
     const formatPrice = (price) => {
+        if (price === 0) return 'Gratis';
         return new Intl.NumberFormat('es-MX', {
             style: 'currency',
             currency: 'MXN'
         }).format(price);
+    };
+
+    const formatDuration = (days) => {
+        if (days === 0) return 'Permanente';
+        if (days === 1) return '1 día';
+        if (days === 7) return '1 semana';
+        if (days === 30) return '1 mes';
+        return `${days} días`;
     };
 
     const getMemberDisplayName = (member) => {
@@ -181,7 +199,7 @@ function SubscriptionModal({ onClose, onSuccess }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
                     <h3 className="text-xl font-semibold text-text-primary">
                         Nueva Suscripción
                     </h3>
@@ -195,174 +213,174 @@ function SubscriptionModal({ onClose, onSuccess }) {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                {/* Warning if member has active subscription */}
-                {existingSubscription && (
-                    <div className="flex items-start gap-3 p-4 bg-warning-50 border border-warning-200 rounded-lg">
-                        <AlertTriangle className="h-5 w-5 text-warning-600 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-warning-800">
-                                Este miembro ya tiene una suscripción activa
-                            </p>
-                            <p className="text-sm text-warning-700 mt-1">
-                                Vence el {formatDate(existingSubscription.end_date)}
-                            </p>
+                    {/* Warning if member has active subscription */}
+                    {existingSubscription && (
+                        <div className="flex items-start gap-3 p-4 bg-warning-50 border border-warning-200 rounded-lg">
+                            <AlertTriangle className="h-5 w-5 text-warning-600 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-warning-800">
+                                    Este miembro ya tiene una suscripción activa
+                                </p>
+                                <p className="text-sm text-warning-700 mt-1">
+                                    Vence el {formatDate(existingSubscription.end_date)}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Member */}
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Miembro *
-                        </label>
-                        <SearchableSelect
-                            options={membersForSelect}
-                            value={formData.member_id}
-                            onChange={(value) => handleChange({ target: { name: 'member_id', value } })}
-                            placeholder="Buscar miembro por nombre..."
-                            displayKey="name"
-                            valueKey="id"
-                            error={errors.member_id}
-                        />
-                    </div>
-
-                    {/* Plan */}
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Plan *
-                        </label>
-                        <select
-                            name="plan_id"
-                            value={formData.plan_id}
-                            onChange={handleChange}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                                errors.plan_id ? 'border-error-500' : 'border-gray-300'
-                            }`}
-                        >
-                            <option value="">Seleccionar plan</option>
-                            {plans.map(plan => (
-                            <option key={plan.id} value={plan.id}>
-                                {plan.name} - {formatPrice(plan.price)} ({plan.duration_days} días)
-                            </option>
-                            ))}
-                        </select>
-                        {errors.plan_id && (
-                            <p className="text-error-500 text-sm mt-1">{errors.plan_id}</p>
-                        )}
-                    </div>
-
-                    {/* Start Date */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Fecha de Inicio *
-                        </label>
-                        <input
-                            type="date"
-                            name="start_date"
-                            value={formData.start_date}
-                            onChange={handleChange}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                                errors.start_date ? 'border-error-500' : 'border-gray-300'
-                            }`}
-                        />
-                        {errors.start_date && (
-                            <p className="text-error-500 text-sm mt-1">{errors.start_date}</p>
-                        )}
-                    </div>
-
-                    {/* End Date (Read-only) */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Fecha de Vencimiento
-                        </label>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
-                            <Calendar className="h-5 w-5 text-gray-400" />
-                            <span className="text-gray-700">
-                                {endDate ? formatDate(endDate) : 'Seleccione un plan'}
-                            </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Member */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Miembro *
+                            </label>
+                            <SearchableSelect
+                                options={membersForSelect}
+                                value={formData.member_id}
+                                onChange={(value) => handleChange({ target: { name: 'member_id', value } })}
+                                placeholder="Buscar miembro por nombre..."
+                                displayKey="name"
+                                valueKey="id"
+                                error={errors.member_id}
+                            />
                         </div>
-                    </div>
 
-                    {/* Payment Status */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Estado de Pago
-                        </label>
-                        <select
-                            name="payment_status"
-                            value={formData.payment_status}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        >
-                            <option value="pending">Pendiente</option>
-                            <option value="partial">Parcial</option>
-                            <option value="paid">Pagado</option>
-                        </select>
-                    </div>
-
-                    {/* Amount Paid */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Monto Pagado
-                        </label>
-                        <input
-                            type="number"
-                            name="amount_paid"
-                            value={formData.amount_paid}
-                            onChange={handleChange}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                    </div>
-
-                    {/* Notes */}
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Notas
-                        </label>
-                        <textarea
-                            name="notes"
-                            value={formData.notes}
-                            onChange={handleChange}
-                            placeholder="Comentarios adicionales..."
-                            rows="3"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                    </div>
-                </div>
-
-                {/* Summary */}
-                {selectedPlan && (
-                    <div className="p-4 bg-info-50 border border-info-200 rounded-lg">
-                        <h4 className="text-sm font-medium text-info-900 mb-2">Resumen</h4>
-                        <div className="space-y-1 text-sm text-info-800">
-                            <div className="flex justify-between">
-                                <span>Plan:</span>
-                                <span className="font-medium">{selectedPlan.name}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Duración:</span>
-                                <span className="font-medium">{selectedPlan.duration_days} días</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Precio:</span>
-                                <span className="font-medium">{formatPrice(selectedPlan.price)}</span>
-                            </div>
-                            {endDate && (
-                            <div className="flex justify-between pt-2 border-t border-info-200">
-                                <span>Vence:</span>
-                                <span className="font-semibold">{formatDate(endDate)}</span>
-                            </div>
+                        {/* Plan */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Plan *
+                            </label>
+                            <select
+                                name="plan_id"
+                                value={formData.plan_id}
+                                onChange={handleChange}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                                    errors.plan_id ? 'border-error-500' : 'border-gray-300'
+                                }`}
+                            >
+                                <option value="">Seleccionar plan</option>
+                                {plans.map(plan => (
+                                    <option key={plan.id} value={plan.id}>
+                                        {plan.name} - {formatPrice(plan.price)} ({formatDuration(plan.duration_days)})
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.plan_id && (
+                                <p className="text-error-500 text-sm mt-1">{errors.plan_id}</p>
                             )}
                         </div>
+
+                        {/* Start Date */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Fecha de Inicio *
+                            </label>
+                            <input
+                                type="date"
+                                name="start_date"
+                                value={formData.start_date}
+                                onChange={handleChange}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                                    errors.start_date ? 'border-error-500' : 'border-gray-300'
+                                }`}
+                            />
+                            {errors.start_date && (
+                                <p className="text-error-500 text-sm mt-1">{errors.start_date}</p>
+                            )}
+                        </div>
+
+                        {/* End Date (Read-only) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Fecha de Vencimiento
+                            </label>
+                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                                <Calendar className="h-5 w-5 text-gray-400" />
+                                <span className="text-gray-700">
+                                    {endDate ? formatDate(endDate) : 'Seleccione un plan'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Payment Status */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Estado de Pago
+                            </label>
+                            <select
+                                name="payment_status"
+                                value={formData.payment_status}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            >
+                                <option value="pending">Pendiente</option>
+                                <option value="partial">Parcial</option>
+                                <option value="paid">Pagado</option>
+                            </select>
+                        </div>
+
+                        {/* Amount Paid */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Monto Pagado
+                            </label>
+                            <input
+                                type="number"
+                                name="amount_paid"
+                                value={formData.amount_paid}
+                                onChange={handleChange}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            />
+                        </div>
+
+                        {/* Notes */}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Notas
+                            </label>
+                            <textarea
+                                name="notes"
+                                value={formData.notes}
+                                onChange={handleChange}
+                                placeholder="Comentarios adicionales..."
+                                rows="3"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            />
+                        </div>
                     </div>
-                )}
+
+                    {/* Summary */}
+                    {selectedPlan && (
+                        <div className="p-4 bg-info-50 border border-info-200 rounded-lg">
+                            <h4 className="text-sm font-medium text-info-900 mb-2">Resumen</h4>
+                            <div className="space-y-1 text-sm text-info-800">
+                                <div className="flex justify-between">
+                                    <span>Plan:</span>
+                                    <span className="font-medium">{selectedPlan.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Duración:</span>
+                                    <span className="font-medium">{formatDuration(selectedPlan.duration_days)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Precio:</span>
+                                    <span className="font-medium">{formatPrice(selectedPlan.price)}</span>
+                                </div>
+                                {endDate && (
+                                    <div className="flex justify-between pt-2 border-t border-info-200">
+                                        <span>Vence:</span>
+                                        <span className="font-semibold">{formatDate(endDate)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Buttons */}
-                    <div className="flex justify-end gap-3 pt-4">
+                    <div className="flex justify-end gap-3 pt-4 border-t">
                         <button
                             type="button"
                             onClick={() => onClose(false)}

@@ -63,6 +63,18 @@ function Navbar() {
                                 >
                                     Dashboard
                                 </Link>
+                                {isAdmin() && (
+                                    <Link 
+                                        to="/reportes"
+                                        className={`${
+                                            isActive('/reportes')
+                                                ? 'text-text-primary font-medium'
+                                                : 'text-text-secondary'
+                                        } hover:text-primary-600 transition-colors`}
+                                    >
+                                        Reportes
+                                    </Link>
+                                )}
                                 <Link 
                                     to="/miembros" 
                                     className={`${

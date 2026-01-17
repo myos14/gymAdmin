@@ -8,7 +8,6 @@ import { dashboardService } from '../services/dashboardService';
 
 function MembersList() {
     const [members, setMembers] = useState([]);
-    const [filteredMembers, setFilteredMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -24,10 +23,41 @@ function MembersList() {
     const [total, setTotal] = useState(0);
     const limit = 50;
 
+    // Métricas totales (sin filtrar)
+    const [metrics, setMetrics] = useState({
+        total: 0,
+        active: 0,
+        inactive: 0
+    });
+
     useEffect(() => {
         loadMembers();
-        loadCurrentInGym();
     }, [page, statusFilter, searchTerm]);
+
+    useEffect(() => {
+        loadCurrentInGym();
+        loadMetrics();
+    }, []);
+
+    const loadMetrics = async () => {
+        try {
+            // Obtener totales sin filtros
+            const response = await getMembers({ limit: 1 });
+            const totalMembers = response.data.total;
+            
+            // Obtener activos
+            const activeResponse = await getMembers({ is_active: true, limit: 1 });
+            const activeCount = activeResponse.data.total;
+            
+            setMetrics({
+                total: totalMembers,
+                active: activeCount,
+                inactive: totalMembers - activeCount
+            });
+        } catch (error) {
+            console.error('Error loading metrics:', error);
+        }
+    };
 
     const loadMembers = async () => {
         try {
@@ -88,6 +118,7 @@ function MembersList() {
         setIsModalOpen(false);
         if (shouldRefresh) {
             loadMembers();
+            loadMetrics();
         }
     };
 
@@ -97,17 +128,15 @@ function MembersList() {
 
     const handleSearchChange = (value) => {
         setSearchTerm(value);
-        setPage(1); // Reset to first page on search
+        setPage(1);
     };
 
     const handleFilterChange = (value) => {
         setStatusFilter(value);
-        setPage(1); // Reset to first page on filter change
+        setPage(1);
     };
 
     const totalPages = Math.ceil(total / limit);
-    const activeCount = members.filter(m => m.is_active).length;
-    const inactiveCount = members.filter(m => !m.is_active).length;
 
     return (
         <div className="p-6 space-y-6 bg-primary-50 min-h-screen">
@@ -128,14 +157,14 @@ function MembersList() {
                 </div>
             </div>
 
-            {/* Metrics - 4 cards like Subscriptions */}
+            {/* Metrics - 4 cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Members */}
                 <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Total</p>
-                            <p className="text-2xl font-bold text-primary">{total}</p>
+                            <p className="text-2xl font-bold text-primary">{metrics.total}</p>
                         </div>
                         <div className="bg-primary-100 rounded-full p-3">
                             <Users className="h-6 w-6 text-primary-600" />
@@ -148,7 +177,7 @@ function MembersList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Activos</p>
-                            <p className="text-2xl font-bold text-success-600">{activeCount}</p>
+                            <p className="text-2xl font-bold text-success-600">{metrics.active}</p>
                         </div>
                         <div className="bg-success-100 rounded-full p-3">
                             <UserPlus className="h-6 w-6 text-success-600" />
@@ -174,7 +203,7 @@ function MembersList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Inactivos</p>
-                            <p className="text-2xl font-bold text-error-600">{inactiveCount}</p>
+                            <p className="text-2xl font-bold text-error-600">{metrics.inactive}</p>
                         </div>
                         <div className="bg-error-100 rounded-full p-3">
                             <UserX className="h-6 w-6 text-error-600" />
@@ -256,7 +285,6 @@ function MembersList() {
                                                     {member.last_name_maternal && ` ${member.last_name_maternal}`}
                                                 </div>
                                             </td>
-                                            {/* Email */}
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {member.email ? (
                                                     <div className="text-sm text-gray-600">{member.email}</div>
@@ -266,7 +294,6 @@ function MembersList() {
                                                     </span>
                                                 )}
                                             </td>
-                                            {/* Teléfono */}
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {member.phone ? (
                                                     <div className="text-sm text-gray-600">{member.phone}</div>
@@ -384,7 +411,10 @@ function MembersList() {
                     member={editingMember}
                     onClose={(shouldRefresh) => {
                         setEditingMember(null);
-                        if (shouldRefresh) loadMembers();
+                        if (shouldRefresh) {
+                            loadMembers();
+                            loadMetrics();
+                        }
                     }}
                     onSuccess={showNotification}
                 />

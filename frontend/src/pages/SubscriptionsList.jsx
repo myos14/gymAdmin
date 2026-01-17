@@ -16,9 +16,46 @@ function SubscriptionsList() {
     const [total, setTotal] = useState(0);
     const limit = 50;
 
+    // Métricas totales (sin filtrar)
+    const [metrics, setMetrics] = useState({
+        total: 0,
+        active: 0,
+        expiringThisWeek: 0,
+        expired: 0
+    });
+
     useEffect(() => {
         loadSubscriptions();
-    }, [statusFilter, page]);
+    }, [statusFilter, searchTerm, page]);
+
+    useEffect(() => {
+        loadMetrics();
+    }, []);
+
+    const loadMetrics = async () => {
+        try {
+            // Obtener métricas generales sin filtros
+            const data = await subscriptionService.getAllSubscriptions({ limit: 1000 });
+            const allSubs = data.subscriptions || [];
+            
+            const active = allSubs.filter(s => s.status === 'active').length;
+            const expired = allSubs.filter(s => s.status === 'expired').length;
+            const expiringThisWeek = allSubs.filter(s => {
+                if (s.status !== 'active') return false;
+                const days = calculateDaysRemaining(s.end_date);
+                return days >= 0 && days <= 7;
+            }).length;
+
+            setMetrics({
+                total: data.total || 0,
+                active,
+                expired,
+                expiringThisWeek
+            });
+        } catch (error) {
+            console.error('Error loading metrics:', error);
+        }
+    };
 
     const loadSubscriptions = async () => {
         try {
@@ -33,10 +70,14 @@ function SubscriptionsList() {
             if (statusFilter !== 'all') {
                 filters.status = statusFilter;
             }
+
+            if (searchTerm) {
+                filters.search = searchTerm;
+            }
         
             const data = await subscriptionService.getAllSubscriptions(filters);
-            setSubscriptions(data.subscriptions);
-            setTotal(data.total);
+            setSubscriptions(data.subscriptions || []);
+            setTotal(data.total || 0);
         } catch (error) {
             console.error('Error loading subscriptions:', error);
             showNotification('Error al cargar suscripciones', 'error');
@@ -58,6 +99,7 @@ function SubscriptionsList() {
             await subscriptionService.cancelSubscription(subscription.id);
             showNotification('Suscripción cancelada exitosamente', 'success');
             loadSubscriptions();
+            loadMetrics();
         } catch (error) {
             console.error('Error canceling subscription:', error);
             showNotification('Error al cancelar suscripción', 'error');
@@ -68,6 +110,7 @@ function SubscriptionsList() {
         setIsModalOpen(false);
         if (shouldReload) {
             loadSubscriptions();
+            loadMetrics();
         }
     };
 
@@ -78,7 +121,12 @@ function SubscriptionsList() {
 
     const handleFilterChange = (value) => {
         setStatusFilter(value);
-        setPage(1); // Reset to first page on filter change
+        setPage(1);
+    };
+
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setPage(1);
     };
 
     const calculateDaysRemaining = (endDate) => {
@@ -145,25 +193,6 @@ function SubscriptionsList() {
         }).format(price);
     };
 
-    const filteredSubscriptions = subscriptions.filter(sub => {
-        if (!searchTerm) return true;
-        
-        const search = searchTerm.toLowerCase();
-        const memberName = `${sub.member?.first_name} ${sub.member?.last_name_paternal}`.toLowerCase();
-        const planName = sub.plan?.name.toLowerCase();
-        
-        return memberName.includes(search) || planName.includes(search);
-    });
-
-    // Calcular métricas
-    const activeCount = subscriptions.filter(s => s.status === 'active').length;
-    const expiredCount = subscriptions.filter(s => s.status === 'expired').length;
-    const expiringThisWeek = subscriptions.filter(s => {
-        if (s.status !== 'active') return false;
-        const days = calculateDaysRemaining(s.end_date);
-        return days >= 0 && days <= 7;
-    }).length;
-
     const totalPages = Math.ceil(total / limit);
 
     return (
@@ -199,7 +228,7 @@ function SubscriptionsList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Total</p>
-                            <p className="text-2xl font-bold text-primary">{total}</p>
+                            <p className="text-2xl font-bold text-primary">{metrics.total}</p>
                         </div>
                         <div className="bg-primary-100 rounded-full p-3">
                             <CreditCard className="h-6 w-6 text-primary-600" />
@@ -212,7 +241,7 @@ function SubscriptionsList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Activas</p>
-                            <p className="text-2xl font-bold text-success-600">{activeCount}</p>
+                            <p className="text-2xl font-bold text-success-600">{metrics.active}</p>
                         </div>
                         <div className="bg-success-100 rounded-full p-3">
                             <CheckCircle className="h-6 w-6 text-success-600" />
@@ -225,7 +254,7 @@ function SubscriptionsList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Vencen esta semana</p>
-                            <p className="text-2xl font-bold text-warning-600">{expiringThisWeek}</p>
+                            <p className="text-2xl font-bold text-warning-600">{metrics.expiringThisWeek}</p>
                         </div>
                         <div className="bg-warning-100 rounded-full p-3">
                             <AlertCircle className="h-6 w-6 text-warning-600" />
@@ -238,7 +267,7 @@ function SubscriptionsList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Vencidas</p>
-                            <p className="text-2xl font-bold text-error-600">{expiredCount}</p>
+                            <p className="text-2xl font-bold text-error-600">{metrics.expired}</p>
                         </div>
                         <div className="bg-error-100 rounded-full p-3">
                             <XCircle className="h-6 w-6 text-error-600" />
@@ -257,7 +286,7 @@ function SubscriptionsList() {
                             type="text"
                             placeholder="Buscar por miembro o plan..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                     </div>
@@ -313,14 +342,14 @@ function SubscriptionsList() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredSubscriptions.length === 0 ? (
+                                    {subscriptions.length === 0 ? (
                                         <tr>
                                             <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
                                                 No se encontraron suscripciones
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredSubscriptions.map((subscription, index) => {
+                                        subscriptions.map((subscription, index) => {
                                             const daysRemaining = calculateDaysRemaining(subscription.end_date);
                                             
                                             return (

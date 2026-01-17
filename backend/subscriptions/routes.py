@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from typing import List, Optional
 from datetime import date, timedelta
@@ -27,7 +27,6 @@ router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 def calculate_end_date(start_date: date, duration_days: int) -> date:
     """Calcular fecha de fin, manejando planes permanentes"""
     if duration_days == 0:
-        # Permanent plan: 100 years
         return start_date + timedelta(days=36500)
     return start_date + timedelta(days=duration_days)
 
@@ -60,13 +59,11 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
             detail=f"El miembro ya tiene una suscripción activa que vence el {active_sub.end_date}"
         )
     
-    # Calculate end date
     if plan.duration_days == 0:
         end_date = subscription.start_date + timedelta(days=36500)
     else:
         end_date = calculate_end_date(subscription.start_date, plan.duration_days)
     
-    # ← FIX: Excluir payment_method del dump porque no existe en Subscription
     subscription_data = subscription.model_dump(exclude={'payment_method'})
     
     db_subscription = Subscription(
@@ -79,10 +76,8 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     db.add(db_subscription)
     db.flush()
     
-    # Crear registro de pago
     payment_amount = subscription.amount_paid if subscription.amount_paid > 0 else plan.price
     
-    # Map payment method from frontend to database format
     method_map = {
         'cash': 'efectivo',
         'card': 'tarjeta',
@@ -129,7 +124,6 @@ def renew_subscription(
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
     
-    # Verify if there's another active subscription
     active_sub = db.query(Subscription).filter(
         and_(
             Subscription.member_id == old_subscription.member_id,
@@ -145,7 +139,6 @@ def renew_subscription(
             detail=f"El miembro ya tiene otra suscripción activa que vence el {active_sub.end_date}"
         )
     
-    # Calculate new dates
     if renew_data.start_date:
         new_start_date = renew_data.start_date
     else:
@@ -168,13 +161,11 @@ def renew_subscription(
         notes=renew_data.notes
     )
     
-    #  Mark old subscription as expired
     old_subscription.status = "expired"
     
     db.add(new_subscription)
     db.flush()
     
-    # Create automatic payment
     payment_amount = renew_data.amount_paid if renew_data.amount_paid and renew_data.amount_paid > 0 else plan.price
     
     db_payment = PaymentRecord(
@@ -202,21 +193,21 @@ def get_subscriptions(
     member_id: Optional[int] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: Session = Depends(get_db)
 ):
-    """Obtener lista de suscripciones con paginación (requiere autenticación)"""
-    query = db.query(Subscription)
+    """Obtener lista de suscripciones con paginación"""
+    query = db.query(Subscription).options(
+        joinedload(Subscription.member),
+        joinedload(Subscription.plan)
+    )
     
     if status:
         query = query.filter(Subscription.status == status)
     if member_id:
         query = query.filter(Subscription.member_id == member_id)
     
-    # Get total count before pagination
     total = query.count()
     
-    # Apply pagination
     subscriptions = query.order_by(Subscription.created_at.desc()).offset(skip).limit(limit).all()
     
     for sub in subscriptions:

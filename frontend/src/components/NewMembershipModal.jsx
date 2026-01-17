@@ -35,7 +35,6 @@ function NewMembershipModal({ onClose, onSuccess }) {
     const loadPlans = async () => {
         try {
             const data = await planService.getAllPlans('active');
-            // Ordenar por duración - FIX: usar slice() para no mutar el array original
             const sortedPlans = [...data].sort((a, b) => {
                 const durationA = a.duration_days || 0;
                 const durationB = b.duration_days || 0;
@@ -130,8 +129,6 @@ function NewMembershipModal({ onClose, onSuccess }) {
         setLoading(true);
         
         try {
-            console.log('Creating member...'); // Debug
-            
             const memberData = {
                 first_name: formData.first_name.trim(),
                 last_name_paternal: formData.last_name_paternal.trim(),
@@ -144,7 +141,6 @@ function NewMembershipModal({ onClose, onSuccess }) {
             };
 
             const newMember = await memberService.createMember(memberData);
-            console.log('Member created:', newMember); // Debug
 
             const subscriptionData = {
                 member_id: newMember.id,
@@ -156,28 +152,19 @@ function NewMembershipModal({ onClose, onSuccess }) {
                 notes: formData.payment_notes.trim() || null
             };
 
-            console.log('Creating subscription...', subscriptionData); // Debug
             await subscriptionService.createSubscription(subscriptionData);
-            console.log('Subscription created'); // Debug
 
-            // Llamar onSuccess ANTES de cerrar
-            if (onSuccess) {
-                onSuccess(
-                    `Membresía registrada exitosamente para ${newMember.first_name} ${newMember.last_name_paternal}`,
-                    'success'
-                );
-            }
+            // ← CRÍTICO: Llamar onSuccess PRIMERO
+            onSuccess(
+                `Membresía registrada: ${newMember.first_name} ${newMember.last_name_paternal}`,
+                'success'
+            );
             
-            // Pequeño delay para que se vea el mensaje antes de cerrar
-            setTimeout(() => {
-                if (onClose) {
-                    onClose(true);
-                }
-            }, 500);
+            // ← CRÍTICO: Cerrar modal DESPUÉS
+            onClose(true);
             
         } catch (error) {
             console.error('Error creating membership:', error);
-            console.error('Error details:', error.response?.data); // Debug
             
             let errorMessage = 'Error al registrar membresía';
             
@@ -192,9 +179,7 @@ function NewMembershipModal({ onClose, onSuccess }) {
                 errorMessage = error.message;
             }
             
-            if (onSuccess) {
-                onSuccess(errorMessage, 'error');
-            }
+            onSuccess(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -213,7 +198,6 @@ function NewMembershipModal({ onClose, onSuccess }) {
         const start = new Date(formData.start_date);
         const end = new Date(start);
         
-        // Fix: manejar planes permanentes
         if (selectedPlan.duration_days === 0 || selectedPlan.duration_days > 36500) {
             return 'Permanente';
         }
@@ -324,7 +308,6 @@ function NewMembershipModal({ onClose, onSuccess }) {
                                             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         />
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">Opcional - Para felicitaciones y ofertas especiales</p>
                                 </div>
 
                                 <div>

@@ -140,58 +140,75 @@ function Reports() {
                     </div>
                 </div>
 
-                {/* Métodos de pago */}
+                {/* Reporte de Retención */}
                 <div className="bg-white rounded-lg shadow">
                     <div className="p-6 border-b border-gray-200">
                         <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                            <DollarSign className="h-5 w-5 text-primary-600" />
-                            Métodos de Pago
+                            <Users className="h-5 w-5 text-primary-600" />
+                            Retención de Miembros
                         </h3>
                     </div>
-                    <div className="p-6">
-                        {Object.keys(data.income.by_payment_method).length > 0 ? (
-                            <div className="space-y-3">
-                                {Object.entries(data.income.by_payment_method).map(([method, amount]) => {
-                                    // Map names to display in frontend
-                                    const methodNames = {
-                                        'efectivo': 'Efectivo',
-                                        'tarjeta': 'Tarjeta',
-                                        'transferencia': 'Transferencia',
-                                        'otro': 'Otro',
-                                        // Legacy support for old names
-                                        'cash': 'Efectivo',
-                                        'card': 'Tarjeta',
-                                        'transfer': 'Transferencia',
-                                        'other': 'Otro'
-                                    };
-                                    
-                                    const displayName = methodNames[method] || method;
-                                    const percentage = ((amount / data.income.total) * 100).toFixed(1);
-                                    
-                                    return (
-                                        <div key={method}>
-                                            <div className="flex justify-between mb-1">
-                                                <span className="text-sm font-medium text-text-primary">
-                                                    {displayName}
-                                                </span>
-                                                <span className="text-sm font-semibold text-primary-600">
-                                                    {formatCurrency(amount)}
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                <div
-                                                    className="bg-primary-600 h-2 rounded-full"
-                                                    style={{ width: `${percentage}%` }}
-                                                ></div>
-                                            </div>
-                                            <div className="text-xs text-text-secondary mt-1">{percentage}%</div>
-                                        </div>
-                                    );
-                                })}
+                    <div className="p-6 space-y-6">
+                        {/* Métricas principales */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center p-4 bg-success-50 rounded-lg">
+                                <div className="text-3xl font-bold text-success-600">
+                                    {data.retention.retention_rate}%
+                                </div>
+                                <div className="text-sm text-text-secondary mt-1">Tasa de Retención</div>
                             </div>
-                        ) : (
-                            <p className="text-center text-text-secondary py-8">No hay datos de pagos</p>
-                        )}
+                            <div className="text-center p-4 bg-primary-50 rounded-lg">
+                                <div className="text-3xl font-bold text-primary-600">
+                                    {data.retention.renewal_rate}%
+                                </div>
+                                <div className="text-sm text-text-secondary mt-1">Tasa de Renovación</div>
+                            </div>
+                        </div>
+
+                        {/* Desglose de miembros */}
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-sm font-medium text-text-primary">Total de Miembros</span>
+                                <span className="text-lg font-bold text-text-primary">
+                                    {data.retention.total_members}
+                                </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center p-3 bg-success-50 rounded-lg">
+                                <div>
+                                    <div className="text-sm font-medium text-success-700">Miembros Activos</div>
+                                    <div className="text-xs text-success-600">Con suscripción vigente</div>
+                                </div>
+                                <span className="text-lg font-bold text-success-700">
+                                    {data.retention.active_members}
+                                </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <div className="text-sm font-medium text-text-secondary">Miembros Inactivos</div>
+                                    <div className="text-xs text-text-secondary">Sin suscripción activa</div>
+                                </div>
+                                <span className="text-lg font-bold text-text-secondary">
+                                    {data.retention.inactive_members}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Renovaciones en el periodo */}
+                        <div className="pt-4 border-t border-gray-200">
+                            <div className="text-sm text-text-secondary mb-2">En el periodo seleccionado:</div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-text-primary">Suscripciones vencidas:</span>
+                                <span className="font-semibold">{data.retention.expired_in_period}</span>
+                            </div>
+                            <div className="flex justify-between text-sm mt-1">
+                                <span className="text-text-primary">Miembros que renovaron:</span>
+                                <span className="font-semibold text-success-600">
+                                    {data.retention.renewed_count}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

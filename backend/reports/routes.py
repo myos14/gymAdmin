@@ -15,24 +15,21 @@ def get_reports_summary(
 ):
     """Obtener resumen de reportes para el periodo seleccionado"""
     
-    # Calcular fechas
     today = date.today()
     if period == 'week':
         start_date = today - timedelta(days=7)
     elif period == 'month':
         start_date = today - timedelta(days=30)
-    else:  # year
+    else:
         start_date = today - timedelta(days=365)
     
-    # Importar modelos
     from payments.models import PaymentRecord
     from plans.models import Plan
     from members.models import Member
     from attendance.models import Attendance
     from subscriptions.models import Subscription
     
-    # === 1. INGRESOS ===
-    # Ingresos por plan
+    # Earnings
     income_by_plan = db.query(
         Plan.name.label('plan_name'),
         func.count(PaymentRecord.id).label('count'),
@@ -47,29 +44,19 @@ def get_reports_summary(
         PaymentRecord.payment_date <= today
     ).group_by(Plan.name).order_by(desc('total')).all()
     
-    # Ingresos por método de pago
-    payment_methods = db.query(
-        PaymentRecord.payment_method,
-        func.sum(PaymentRecord.amount).label('total')
-    ).filter(
-        PaymentRecord.payment_date >= start_date,
-        PaymentRecord.payment_date <= today
-    ).group_by(PaymentRecord.payment_method).all()
-    
-    # Total de ingresos
+    # Total income
     total_income = sum(item.total for item in income_by_plan) if income_by_plan else Decimal(0)
     payment_count = db.query(PaymentRecord).filter(
         PaymentRecord.payment_date >= start_date,
         PaymentRecord.payment_date <= today
     ).count()
     
-    # === 2. MIEMBROS ===
     new_members_count = db.query(Member).filter(
         Member.registration_date >= start_date,
         Member.registration_date <= today
     ).count()
     
-    # === 3. ASISTENCIAS ===
+    # attendance
     total_attendance = db.query(Attendance).filter(
         Attendance.date >= start_date,
         Attendance.date <= today
@@ -78,7 +65,7 @@ def get_reports_summary(
     days_in_period = (today - start_date).days
     daily_avg = round(total_attendance / days_in_period, 1) if days_in_period > 0 else 0
     
-    # Top miembros más activos
+    # Top active members
     top_members = db.query(
         Member.id,
         Member.first_name,
@@ -97,7 +84,46 @@ def get_reports_summary(
         desc('visit_count')
     ).limit(10).all()
     
-    # Construir respuesta
+    # Retention
+    total_members = db.query(Member).count()
+    
+    active_members = db.query(Member).join(
+        Subscription, Member.id == Subscription.member_id
+    ).filter(
+        Subscription.status == 'active',
+        Subscription.end_date >= today
+    ).distinct().count()
+    
+    # Inactive members
+    inactive_members = total_members - active_members
+    
+    #  Rate of retention
+    retention_rate = round((active_members / total_members * 100), 1) if total_members > 0 else 0
+    
+    # Subscriptions that expired in the period
+    expired_in_period = db.query(Subscription).filter(
+        Subscription.end_date >= start_date,
+        Subscription.end_date < today,
+        Subscription.status == 'expired'
+    ).count()
+    
+    # Members that renewed (have an active subscription after having an expired in the period)
+    renewed_members = db.query(func.count(func.distinct(Member.id))).select_from(Member).join(
+        Subscription, Member.id == Subscription.member_id
+    ).filter(
+        Member.id.in_(
+            db.query(Subscription.member_id).filter(
+                Subscription.end_date >= start_date,
+                Subscription.end_date < today,
+                Subscription.status == 'expired'
+            )
+        ),
+        Subscription.status == 'active',
+        Subscription.start_date >= start_date
+    ).scalar()
+    
+    renewal_rate = round((renewed_members / expired_in_period * 100), 1) if expired_in_period > 0 else 0
+    
     return {
         "period": period,
         "start_date": start_date.isoformat(),
@@ -113,11 +139,7 @@ def get_reports_summary(
                     "average": float(item.average)
                 }
                 for item in income_by_plan
-            ],
-            "by_payment_method": {
-                item.payment_method: float(item.total)
-                for item in payment_methods
-            }
+            ]
         },
         "members": {
             "new_count": new_members_count
@@ -133,5 +155,14 @@ def get_reports_summary(
                 }
                 for m in top_members
             ]
+        },
+        "retention": {
+            "total_members": total_members,
+            "active_members": active_members,
+            "inactive_members": inactive_members,
+            "retention_rate": retention_rate,
+            "renewal_rate": renewal_rate,
+            "expired_in_period": expired_in_period,
+            "renewed_count": renewed_members
         }
     }

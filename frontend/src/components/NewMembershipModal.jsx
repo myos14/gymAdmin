@@ -35,7 +35,12 @@ function NewMembershipModal({ onClose, onSuccess }) {
     const loadPlans = async () => {
         try {
             const data = await planService.getAllPlans('active');
-            const sortedPlans = data.sort((a, b) => a.duration_days - b.duration_days);
+            // Ordenar por duración - FIX: usar slice() para no mutar el array original
+            const sortedPlans = [...data].sort((a, b) => {
+                const durationA = a.duration_days || 0;
+                const durationB = b.duration_days || 0;
+                return durationA - durationB;
+            });
             setPlans(sortedPlans);
         } catch (error) {
             console.error('Error loading plans:', error);
@@ -123,7 +128,10 @@ function NewMembershipModal({ onClose, onSuccess }) {
         }
 
         setLoading(true);
+        
         try {
+            console.log('Creating member...'); // Debug
+            
             const memberData = {
                 first_name: formData.first_name.trim(),
                 last_name_paternal: formData.last_name_paternal.trim(),
@@ -132,12 +140,11 @@ function NewMembershipModal({ onClose, onSuccess }) {
                 email: null,
                 date_of_birth: formData.date_of_birth || null,
                 emergency_contact: formData.emergency_contact.trim() || null,
-                emergency_phone: formData.emergency_phone.trim() || null,
-                registration_date: new Date().toISOString().split('T')[0],
-                is_active: true
+                emergency_phone: formData.emergency_phone.trim() || null
             };
 
             const newMember = await memberService.createMember(memberData);
+            console.log('Member created:', newMember); // Debug
 
             const subscriptionData = {
                 member_id: newMember.id,
@@ -149,26 +156,44 @@ function NewMembershipModal({ onClose, onSuccess }) {
                 notes: formData.payment_notes.trim() || null
             };
 
+            console.log('Creating subscription...', subscriptionData); // Debug
             await subscriptionService.createSubscription(subscriptionData);
+            console.log('Subscription created'); // Debug
 
-            onSuccess(
-                `Membresía registrada exitosamente para ${newMember.first_name} ${newMember.last_name_paternal}`,
-                'success'
-            );
-            onClose(true);
+            // Llamar onSuccess ANTES de cerrar
+            if (onSuccess) {
+                onSuccess(
+                    `Membresía registrada exitosamente para ${newMember.first_name} ${newMember.last_name_paternal}`,
+                    'success'
+                );
+            }
+            
+            // Pequeño delay para que se vea el mensaje antes de cerrar
+            setTimeout(() => {
+                if (onClose) {
+                    onClose(true);
+                }
+            }, 500);
+            
         } catch (error) {
             console.error('Error creating membership:', error);
+            console.error('Error details:', error.response?.data); // Debug
+            
+            let errorMessage = 'Error al registrar membresía';
             
             if (error.response?.data?.detail) {
                 const detail = error.response.data.detail;
                 if (typeof detail === 'string') {
-                    onSuccess(detail, 'error');
+                    errorMessage = detail;
                 } else if (Array.isArray(detail)) {
-                    const errorMsg = detail.map(err => err.msg).join(', ');
-                    onSuccess(errorMsg, 'error');
+                    errorMessage = detail.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
                 }
-            } else {
-                onSuccess('Error al registrar membresía', 'error');
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            if (onSuccess) {
+                onSuccess(errorMessage, 'error');
             }
         } finally {
             setLoading(false);
@@ -187,6 +212,12 @@ function NewMembershipModal({ onClose, onSuccess }) {
         
         const start = new Date(formData.start_date);
         const end = new Date(start);
+        
+        // Fix: manejar planes permanentes
+        if (selectedPlan.duration_days === 0 || selectedPlan.duration_days > 36500) {
+            return 'Permanente';
+        }
+        
         end.setDate(end.getDate() + selectedPlan.duration_days);
         
         return end.toLocaleDateString('es-MX', { 
@@ -208,7 +239,11 @@ function NewMembershipModal({ onClose, onSuccess }) {
                             Paso {step} de 2: {step === 1 ? 'Datos del Miembro' : 'Plan y Pago'}
                         </p>
                     </div>
-                    <button onClick={() => onClose(false)} className="text-gray-400 hover:text-gray-600">
+                    <button 
+                        onClick={() => onClose(false)} 
+                        className="text-gray-400 hover:text-gray-600"
+                        disabled={loading}
+                    >
                         <X className="h-6 w-6" />
                     </button>
                 </div>
@@ -321,10 +356,18 @@ function NewMembershipModal({ onClose, onSuccess }) {
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4 mt-6 border-t">
-                                <button type="button" onClick={() => onClose(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                <button 
+                                    type="button" 
+                                    onClick={() => onClose(false)} 
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
                                     Cancelar
                                 </button>
-                                <button type="button" onClick={handleNext} className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+                                <button 
+                                    type="button" 
+                                    onClick={handleNext} 
+                                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                                >
                                     Siguiente
                                 </button>
                             </div>
@@ -347,7 +390,9 @@ function NewMembershipModal({ onClose, onSuccess }) {
                                         >
                                             <div className="font-semibold text-gray-900">{plan.name}</div>
                                             <div className="text-xl font-bold text-primary-600 mt-1">{formatPrice(plan.price)}</div>
-                                            <div className="text-xs text-gray-500 mt-1">{plan.duration_days} días</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {plan.duration_days === 0 || plan.duration_days > 36500 ? 'Permanente' : `${plan.duration_days} días`}
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
@@ -452,11 +497,21 @@ function NewMembershipModal({ onClose, onSuccess }) {
                             )}
 
                             <div className="flex justify-between pt-4 border-t">
-                                <button type="button" onClick={handleBack} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                <button 
+                                    type="button" 
+                                    onClick={handleBack} 
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                    disabled={loading}
+                                >
                                     Atrás
                                 </button>
                                 <div className="flex gap-3">
-                                    <button type="button" onClick={() => onClose(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => onClose(false)} 
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                        disabled={loading}
+                                    >
                                         Cancelar
                                     </button>
                                     <button

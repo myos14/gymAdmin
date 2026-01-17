@@ -152,19 +152,27 @@ function Reports() {
                         {Object.keys(data.income.by_payment_method).length > 0 ? (
                             <div className="space-y-3">
                                 {Object.entries(data.income.by_payment_method).map(([method, amount]) => {
+                                    // Map names to display in frontend
                                     const methodNames = {
-                                        cash: 'Efectivo',
-                                        card: 'Tarjeta',
-                                        transfer: 'Transferencia',
-                                        other: 'Otro'
+                                        'efectivo': 'Efectivo',
+                                        'tarjeta': 'Tarjeta',
+                                        'transferencia': 'Transferencia',
+                                        'otro': 'Otro',
+                                        // Legacy support for old names
+                                        'cash': 'Efectivo',
+                                        'card': 'Tarjeta',
+                                        'transfer': 'Transferencia',
+                                        'other': 'Otro'
                                     };
+                                    
+                                    const displayName = methodNames[method] || method;
                                     const percentage = ((amount / data.income.total) * 100).toFixed(1);
                                     
                                     return (
                                         <div key={method}>
                                             <div className="flex justify-between mb-1">
                                                 <span className="text-sm font-medium text-text-primary">
-                                                    {methodNames[method] || method}
+                                                    {displayName}
                                                 </span>
                                                 <span className="text-sm font-semibold text-primary-600">
                                                     {formatCurrency(amount)}

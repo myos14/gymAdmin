@@ -35,7 +35,8 @@ function NewMembershipModal({ onClose, onSuccess }) {
     const loadPlans = async () => {
         try {
             const data = await planService.getAllPlans('active');
-            setPlans(data);
+            const sortedPlans = data.sort((a, b) => a.duration_days - b.duration_days);
+            setPlans(sortedPlans);
         } catch (error) {
             console.error('Error loading plans:', error);
         }
@@ -143,6 +144,7 @@ function NewMembershipModal({ onClose, onSuccess }) {
                 plan_id: parseInt(formData.plan_id),
                 start_date: formData.start_date,
                 payment_status: 'paid',
+                payment_method: formData.payment_method,
                 amount_paid: parseFloat(formData.amount_paid),
                 notes: formData.payment_notes.trim() || null
             };

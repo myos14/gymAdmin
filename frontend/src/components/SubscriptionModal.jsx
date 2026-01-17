@@ -76,7 +76,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
         const start = new Date(formData.start_date);
         const end = new Date(start);
         
-        // Si es plan permanente (0 días), mostrar mensaje especial
         if (plan.duration_days === 0) {
             setEndDate('permanent');
             return;
@@ -199,7 +198,7 @@ function SubscriptionModal({ onClose, onSuccess }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <h3 className="text-xl font-semibold text-text-primary">
                         Nueva Suscripción
                     </h3>
@@ -213,7 +212,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {/* Warning if member has active subscription */}
                     {existingSubscription && (
                         <div className="flex items-start gap-3 p-4 bg-warning-50 border border-warning-200 rounded-lg">
                             <AlertTriangle className="h-5 w-5 text-warning-600 mt-0.5" />
@@ -229,7 +227,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Member */}
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Miembro *
@@ -245,7 +242,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             />
                         </div>
 
-                        {/* Plan */}
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Plan *
@@ -270,7 +266,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             )}
                         </div>
 
-                        {/* Start Date */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Fecha de Inicio *
@@ -289,7 +284,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             )}
                         </div>
 
-                        {/* End Date (Read-only) */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Fecha de Vencimiento
@@ -302,7 +296,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             </div>
                         </div>
 
-                        {/* Payment Status */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Estado de Pago
@@ -319,7 +312,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             </select>
                         </div>
 
-                        {/* Amount Paid */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Monto Pagado
@@ -336,7 +328,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             />
                         </div>
 
-                        {/* Notes */}
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Notas
@@ -352,7 +343,6 @@ function SubscriptionModal({ onClose, onSuccess }) {
                         </div>
                     </div>
 
-                    {/* Summary */}
                     {selectedPlan && (
                         <div className="p-4 bg-info-50 border border-info-200 rounded-lg">
                             <h4 className="text-sm font-medium text-info-900 mb-2">Resumen</h4>
@@ -379,8 +369,7 @@ function SubscriptionModal({ onClose, onSuccess }) {
                         </div>
                     )}
 
-                    {/* Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t">
+                    <div className="flex justify-end gap-3 pt-4">
                         <button
                             type="button"
                             onClick={() => onClose(false)}

@@ -22,7 +22,6 @@ function PlanModal({ plan, onClose, onSuccess }) {
                 description: plan.description || '',
             });
             
-            // Check if duration is custom (not in predefined options)
             const predefinedDurations = [0, 1, 7, 30, 60, 90, 180, 365];
             if (plan.duration_days && !predefinedDurations.includes(plan.duration_days)) {
                 setIsCustomDuration(true);
@@ -34,7 +33,6 @@ function PlanModal({ plan, onClose, onSuccess }) {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         
-        // Clear error for this field
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
         }
@@ -44,16 +42,13 @@ function PlanModal({ plan, onClose, onSuccess }) {
         const value = e.target.value;
         
         if (value === 'custom') {
-            // User selected "Personalizado..."
             setIsCustomDuration(true);
             setFormData(prev => ({ ...prev, duration_days: '' }));
         } else {
-            // User selected a predefined duration
             setIsCustomDuration(false);
             setFormData(prev => ({ ...prev, duration_days: value }));
         }
         
-        // Clear error
         if (errors.duration_days) {
             setErrors(prev => ({ ...prev, duration_days: '' }));
         }
@@ -95,7 +90,6 @@ function PlanModal({ plan, onClose, onSuccess }) {
 
         setLoading(true);
         try {
-            // Clean data
             const cleanedData = {
                 name: formData.name.trim(),
                 price: parseFloat(formData.price),
@@ -145,22 +139,16 @@ function PlanModal({ plan, onClose, onSuccess }) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <h3 className="text-xl font-semibold text-text-primary">
                         {plan ? 'Editar Plan' : 'Nuevo Plan'}
                     </h3>
-                    <button
-                        onClick={() => onClose(false)}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
+                    <button onClick={() => onClose(false)} className="text-gray-400 hover:text-gray-600">
                         <X className="h-6 w-6" />
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {/* Name */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Nombre del Plan *
@@ -175,12 +163,9 @@ function PlanModal({ plan, onClose, onSuccess }) {
                                 errors.name ? 'border-red-500' : 'border-gray-300'
                             }`}
                         />
-                        {errors.name && (
-                            <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                        )}
+                        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                     </div>
 
-                    {/* Price */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Precio (MXN) *
@@ -197,12 +182,9 @@ function PlanModal({ plan, onClose, onSuccess }) {
                                 errors.price ? 'border-red-500' : 'border-gray-300'
                             }`}
                         />
-                        {errors.price && (
-                            <p className="text-red-500 text-sm mt-1">{errors.price}</p>
-                        )}
+                        {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
                     </div>
 
-                    {/* Duration */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Duración *
@@ -250,16 +232,13 @@ function PlanModal({ plan, onClose, onSuccess }) {
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-500">
-                                    💡 <strong>0 días</strong> = Permanente (sin vencimiento) | <strong>1-3650</strong> = Días específicos (máx 10 años)
+                                    💡 <strong>0 días</strong> = Permanente | <strong>1-3650</strong> = Días específicos (máx 10 años)
                                 </p>
                             </div>
                         )}
-                        {errors.duration_days && (
-                            <p className="text-red-500 text-sm mt-1">{errors.duration_days}</p>
-                        )}
+                        {errors.duration_days && <p className="text-red-500 text-sm mt-1">{errors.duration_days}</p>}
                     </div>
 
-                    {/* Description */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Descripción
@@ -274,13 +253,8 @@ function PlanModal({ plan, onClose, onSuccess }) {
                         />
                     </div>
 
-                    {/* Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                        <button
-                            type="button"
-                            onClick={() => onClose(false)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                        >
+                    <div className="flex justify-end gap-3 pt-4">
+                        <button type="button" onClick={() => onClose(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                             Cancelar
                         </button>
                         <button

@@ -1,73 +1,97 @@
 # backend/database_backup/routes.py
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
-import subprocess
+from fastapi.responses import StreamingResponse
 from datetime import datetime
-import os
+import io
+from sqlalchemy import text, inspect
+from database import get_db
+from sqlalchemy.orm import Session
 from users.auth import require_admin
 from users.models import User
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
 @router.get("/database")
-def backup_database(current_user: User = Depends(require_admin)):
+def backup_database(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
-    Generar respaldo de base de datos (solo admin)
+    Generar respaldo de datos (solo admin)
     """
     try:
-        # Obtener fecha actual
-        fecha = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"fuerzafit_backup_{fecha}.sql"
-        filepath = f"/tmp/{filename}"
+        # Obtener todas las tablas
+        inspector = inspect(db.bind)
+        tables = inspector.get_table_names()
         
-        # Obtener credenciales de la base de datos
-        db_user = os.getenv("DB_USER", "postgres")
-        db_password = os.getenv("DB_PASSWORD")
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "5432")
-        db_name = os.getenv("DB_NAME", "f3manager")
+        # Crear contenido del respaldo
+        backup_lines = []
+        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        if not db_password:
-            raise HTTPException(status_code=500, detail="DB_PASSWORD not configured")
+        backup_lines.append(f"-- FuerzaFit Database Backup")
+        backup_lines.append(f"-- Date: {fecha}")
+        backup_lines.append(f"-- Tables: {', '.join(tables)}\n")
         
-        # Configurar variable de entorno para password
-        env = os.environ.copy()
-        env['PGPASSWORD'] = db_password
+        # Para cada tabla exportar INSERT statements
+        for table in tables:
+            try:
+                # Obtener columnas
+                columns_query = text(f"""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = :table_name
+                    ORDER BY ordinal_position;
+                """)
+                columns_result = db.execute(columns_query, {"table_name": table})
+                columns = [row[0] for row in columns_result]
+                
+                # Obtener datos
+                data_query = text(f"SELECT * FROM {table};")
+                rows = db.execute(data_query).fetchall()
+                
+                if rows:
+                    backup_lines.append(f"\n-- Table: {table} ({len(rows)} rows)")
+                    backup_lines.append(f"DELETE FROM {table};")
+                    
+                    for row in rows:
+                        values = []
+                        for val in row:
+                            if val is None:
+                                values.append("NULL")
+                            elif isinstance(val, str):
+                                escaped = val.replace("'", "''")
+                                values.append(f"'{escaped}'")
+                            elif isinstance(val, (datetime, )):
+                                values.append(f"'{val}'")
+                            elif isinstance(val, bool):
+                                values.append(str(val).upper())
+                            else:
+                                values.append(str(val))
+                        
+                        cols = ", ".join(columns)
+                        vals = ", ".join(values)
+                        backup_lines.append(f"INSERT INTO {table} ({cols}) VALUES ({vals});")
+                    
+            except Exception as e:
+                backup_lines.append(f"-- Error in table {table}: {str(e)}")
         
-        # Ejecutar pg_dump
-        result = subprocess.run(
-            [
-                "pg_dump",
-                "-h", db_host,
-                "-p", db_port,
-                "-U", db_user,
-                "-d", db_name,
-                "-f", filepath,
-                "--no-owner",
-                "--no-acl"
-            ],
-            env=env,
-            capture_output=True,
-            text=True
-        )
+        # Convertir a bytes
+        content = "\n".join(backup_lines).encode('utf-8')
         
-        if result.returncode != 0:
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Error al generar respaldo: {result.stderr}"
-            )
+        # Nombre del archivo
+        fecha_archivo = datetime.now().strftime("%Y-%m-%d")
+        filename = f"fuerzafit_backup_{fecha_archivo}.sql"
         
-        # Devolver archivo
-        return FileResponse(
-            filepath,
+        return StreamingResponse(
+            io.BytesIO(content),
             media_type="application/sql",
-            filename=filename,
             headers={
                 "Content-Disposition": f"attachment; filename={filename}"
             }
         )
         
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Error ejecutando pg_dump: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error generating backup: {str(e)}"
+        )

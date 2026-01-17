@@ -1,11 +1,14 @@
+// frontend/src/pages/Reports.jsx
 import { useState, useEffect } from 'react';
-import { TrendingUp, Users, DollarSign, Calendar, Activity, Award } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Calendar, Activity, Award, Database } from 'lucide-react';
 import { reportsService } from '../services/reportsService';
+import axios from 'axios';
 
 function Reports() {
     const [period, setPeriod] = useState('month');
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [backupLoading, setBackupLoading] = useState(false);
 
     useEffect(() => {
         loadReports();
@@ -20,6 +23,41 @@ function Reports() {
             console.error('Error loading reports:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleBackup = async () => {
+        try {
+            setBackupLoading(true);
+            
+            const response = await axios.get(
+                `${import.meta.env.VITE_API_URL}/backup/database`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    },
+                    responseType: 'blob'
+                }
+            );
+
+            // Crear link de descarga
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            
+            const fecha = new Date().toISOString().split('T')[0];
+            link.setAttribute('download', `fuerzafit_backup_${fecha}.sql`);
+            
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            
+            alert('Respaldo generado exitosamente');
+        } catch (error) {
+            console.error('Error al generar respaldo:', error);
+            alert('Error al generar respaldo de base de datos');
+        } finally {
+            setBackupLoading(false);
         }
     };
 
@@ -55,7 +93,7 @@ function Reports() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
+            {/* Header con botón de backup */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary">Reportes y Análisis</h1>
@@ -63,15 +101,29 @@ function Reports() {
                         Del {formatDate(data.start_date)} al {formatDate(data.end_date)}
                     </p>
                 </div>
-                <select
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                    <option value="week">Última Semana</option>
-                    <option value="month">Último Mes</option>
-                    <option value="year">Último Año</option>
-                </select>
+                
+                <div className="flex items-center gap-3">
+                    <select
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                        <option value="week">Última Semana</option>
+                        <option value="month">Último Mes</option>
+                        <option value="year">Último Año</option>
+                    </select>
+                    
+                    {/* Botón de respaldo */}
+                    <button
+                        onClick={handleBackup}
+                        disabled={backupLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Respaldar base de datos"
+                    >
+                        <Database className="h-5 w-5" />
+                        {backupLoading ? 'Generando...' : 'Respaldar BD'}
+                    </button>
+                </div>
             </div>
 
             {/* Métricas principales */}

@@ -191,6 +191,7 @@ def renew_subscription(
 def get_subscriptions(
     status: Optional[str] = Query(None, pattern="^(active|expired|cancelled)$"),
     member_id: Optional[int] = None,
+    search: Optional[str] = None,  # ← AGREGADO
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -206,6 +207,15 @@ def get_subscriptions(
     if member_id:
         query = query.filter(Subscription.member_id == member_id)
     
+    # ← BÚSQUEDA AGREGADA
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.join(Member).join(Plan).filter(
+            (Member.first_name.ilike(search_pattern)) |
+            (Member.last_name_paternal.ilike(search_pattern)) |
+            (Plan.name.ilike(search_pattern))
+        )
+    
     total = query.count()
     
     subscriptions = query.order_by(Subscription.created_at.desc()).offset(skip).limit(limit).all()
@@ -215,13 +225,43 @@ def get_subscriptions(
     
     db.commit()
     
+    # ← SERIALIZACIÓN MANUAL PARA QUE FUNCIONE
+    subscriptions_data = []
+    for sub in subscriptions:
+        subscriptions_data.append({
+            "id": sub.id,
+            "member_id": sub.member_id,
+            "plan_id": sub.plan_id,
+            "plan_price": float(sub.plan_price),
+            "start_date": sub.start_date.isoformat(),
+            "end_date": sub.end_date.isoformat(),
+            "status": sub.status,
+            "payment_status": sub.payment_status,
+            "amount_paid": float(sub.amount_paid) if sub.amount_paid else 0.0,
+            "notes": sub.notes,
+            "created_at": sub.created_at.isoformat(),
+            "member": {
+                "id": sub.member.id,
+                "first_name": sub.member.first_name,
+                "last_name_paternal": sub.member.last_name_paternal,
+                "last_name_maternal": sub.member.last_name_maternal
+            } if sub.member else None,
+            "plan": {
+                "id": sub.plan.id,
+                "name": sub.plan.name,
+                "price": float(sub.plan.price),
+                "duration_days": sub.plan.duration_days,
+                "description": sub.plan.description
+            } if sub.plan else None
+        })
+    
     return {
-        "subscriptions": subscriptions,
+        "subscriptions": subscriptions_data,
         "total": total,
         "skip": skip,
         "limit": limit
     }
-
+    
 @router.get("/{subscription_id}", response_model=SubscriptionResponse)
 def get_subscription(
     subscription_id: int, 

@@ -12,7 +12,7 @@ from members.models import Member
 from plans.models import Plan
 from payments.models import PaymentRecord
 from subscriptions.schemas import SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse
-from users.auth import get_current_active_user, require_admin  # ← IMPORTANTE
+from users.auth import get_current_active_user, require_admin
 from users.models import User
 
 class SubscriptionRenew(BaseModel):
@@ -194,16 +194,16 @@ def renew_subscription(
     
     return new_subscription
 
-@router.get("/", response_model=List[SubscriptionResponse])
+@router.get("/")
 def get_subscriptions(
     status: Optional[str] = Query(None, pattern="^(active|expired|cancelled)$"),
     member_id: Optional[int] = None,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Obtener lista de suscripciones (requiere autenticación)"""
+    """Obtener lista de suscripciones con paginación (requiere autenticación)"""
     query = db.query(Subscription)
     
     if status:
@@ -211,13 +211,23 @@ def get_subscriptions(
     if member_id:
         query = query.filter(Subscription.member_id == member_id)
     
-    subscriptions = query.offset(skip).limit(limit).all()
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply pagination
+    subscriptions = query.order_by(Subscription.created_at.desc()).offset(skip).limit(limit).all()
     
     for sub in subscriptions:
         update_subscription_status(sub)
     
     db.commit()
-    return subscriptions
+    
+    return {
+        "subscriptions": subscriptions,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
 
 @router.get("/{subscription_id}", response_model=SubscriptionResponse)
 def get_subscription(

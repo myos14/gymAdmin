@@ -16,15 +16,15 @@ def capitalize_name(name: str) -> str:
         return name
     return ' '.join(word.capitalize() for word in name.split())
 
-@router.get("/", response_model=list[MemberResponse])
+@router.get("/")
 def get_members(
     search: Optional[str] = None,
     is_active: Optional[bool] = None,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    """Get all members with optional filters"""
+    """Get all members with optional filters and pagination"""
     query = db.query(Member)
     
     # Search filter
@@ -44,8 +44,18 @@ def get_members(
     if is_active is not None:
         query = query.filter(Member.is_active == is_active)
     
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply pagination
     members = query.order_by(Member.created_at.desc()).offset(skip).limit(limit).all()
-    return members
+    
+    return {
+        "members": members,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
 
 @router.get("/{member_id}", response_model=MemberResponse)
 def get_member(member_id: int, db: Session = Depends(get_db)):

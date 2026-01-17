@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, Edit, UserCheck, Users, UserX, UserPlus, Activity } from 'lucide-react';
+import { Search, Eye, Edit, UserCheck, Users, UserX, UserPlus, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getMembers } from '../services/api';
 import MemberModal from '../components/MemberModal';
 import MemberDetailModal from '../components/MemberDetailModal';
@@ -18,21 +18,38 @@ function MembersList() {
     const [checkInMember, setCheckInMember] = useState(null);
     const [notification, setNotification] = useState(null);
     const [currentInGym, setCurrentInGym] = useState(0);
+    
+    // Pagination
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const limit = 50;
 
     useEffect(() => {
         loadMembers();
         loadCurrentInGym();
-    }, []);
-
-    useEffect(() => {
-        filterMembers();
-    }, [members, searchTerm, statusFilter]);
+    }, [page, statusFilter, searchTerm]);
 
     const loadMembers = async () => {
         try {
             setLoading(true);
-            const response = await getMembers();
-            setMembers(response.data);
+            const skip = (page - 1) * limit;
+            
+            const params = {
+                skip,
+                limit
+            };
+            
+            if (statusFilter !== 'all') {
+                params.is_active = statusFilter === 'active';
+            }
+            
+            if (searchTerm) {
+                params.search = searchTerm;
+            }
+            
+            const response = await getMembers(params);
+            setMembers(response.data.members);
+            setTotal(response.data.total);
         } catch (error) {
             console.error('Error loading members:', error);
             showNotification('Error al cargar miembros', 'error');
@@ -52,28 +69,6 @@ function MembersList() {
         } catch (error) {
             console.error('Error loading gym status:', error);
         }
-    };
-
-    const filterMembers = () => {
-        let filtered = members;
-
-        if (statusFilter !== 'all') {
-            const isActive = statusFilter === 'active';
-            filtered = filtered.filter(member => member.is_active === isActive);
-        }
-
-        if (searchTerm) {
-            const search = searchTerm.toLowerCase();
-            filtered = filtered.filter(member =>
-                `${member.first_name} ${member.last_name_paternal} ${member.last_name_maternal || ''}`
-                .toLowerCase()
-                .includes(search) ||
-                member.email?.toLowerCase().includes(search) ||
-                member.phone?.includes(search)
-            );
-        }
-
-        setFilteredMembers(filtered);
     };
 
     const showNotification = (message, type = 'success') => {
@@ -100,6 +95,17 @@ function MembersList() {
         setEditingMember(member);
     };
 
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handleFilterChange = (value) => {
+        setStatusFilter(value);
+        setPage(1); // Reset to first page on filter change
+    };
+
+    const totalPages = Math.ceil(total / limit);
     const activeCount = members.filter(m => m.is_active).length;
     const inactiveCount = members.filter(m => !m.is_active).length;
 
@@ -129,7 +135,7 @@ function MembersList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Total</p>
-                            <p className="text-2xl font-bold text-primary">{members.length}</p>
+                            <p className="text-2xl font-bold text-primary">{total}</p>
                         </div>
                         <div className="bg-primary-100 rounded-full p-3">
                             <Users className="h-6 w-6 text-primary-600" />
@@ -186,13 +192,13 @@ function MembersList() {
                             type="text"
                             placeholder="Buscar por nombre, email o teléfono..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                     </div>
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => handleFilterChange(e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
                         <option value="all">Todos los estados</option>
@@ -209,105 +215,159 @@ function MembersList() {
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
                         <p className="mt-4 text-secondary">Cargando miembros...</p>
                     </div>
-                ) : filteredMembers.length === 0 ? (
+                ) : members.length === 0 ? (
                     <div className="p-8 text-center">
                         <p className="text-secondary">No se encontraron miembros</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Nombre
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Email
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Teléfono
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Estado
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Acciones
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredMembers.map((member, index) => (
-                                    <tr 
-                                        key={member.id} 
-                                        className={`${
-                                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                        } hover:bg-primary-50 transition-colors`}
-                                    >
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">
-                                                {member.first_name} {member.last_name_paternal}
-                                                {member.last_name_maternal && ` ${member.last_name_maternal}`}
-                                            </div>
-                                        </td>
-                                        {/* Email */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {member.email ? (
-                                                <div className="text-sm text-gray-600">{member.email}</div>
-                                            ) : (
-                                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                                                    Sin registrar
-                                                </span>
-                                            )}
-                                        </td>
-                                        {/* Teléfono */}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {member.phone ? (
-                                                <div className="text-sm text-gray-600">{member.phone}</div>
-                                            ) : (
-                                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                                                    Sin registrar
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs rounded-full ${
-                                                member.is_active
-                                                    ? 'bg-success-100 text-success-800'
-                                                    : 'bg-error-100 text-error-800'
-                                            }`}>
-                                                {member.is_active ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleCheckIn(member)}
-                                                    className="p-1.5 text-primary-600 hover:bg-primary-50 rounded"
-                                                    title="Check-in"
-                                                >
-                                                    <UserCheck className="h-5 w-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewMember(member)}
-                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                                                    title="Ver detalles"
-                                                >
-                                                    <Eye className="h-5 w-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleEditMember(member)}
-                                                    className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
-                                                    title="Editar"
-                                                >
-                                                    <Edit className="h-5 w-5" />
-                                                </button>
-                                            </div>
-                                        </td>
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Nombre
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Email
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Teléfono
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Estado
+                                        </th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Acciones
+                                        </th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {members.map((member, index) => (
+                                        <tr 
+                                            key={member.id} 
+                                            className={`${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                            } hover:bg-primary-50 transition-colors`}
+                                        >
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {member.first_name} {member.last_name_paternal}
+                                                    {member.last_name_maternal && ` ${member.last_name_maternal}`}
+                                                </div>
+                                            </td>
+                                            {/* Email */}
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {member.email ? (
+                                                    <div className="text-sm text-gray-600">{member.email}</div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                                                        Sin registrar
+                                                    </span>
+                                                )}
+                                            </td>
+                                            {/* Teléfono */}
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {member.phone ? (
+                                                    <div className="text-sm text-gray-600">{member.phone}</div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                                                        Sin registrar
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                                    member.is_active
+                                                        ? 'bg-success-100 text-success-800'
+                                                        : 'bg-error-100 text-error-800'
+                                                }`}>
+                                                    {member.is_active ? 'Activo' : 'Inactivo'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleCheckIn(member)}
+                                                        className="p-1.5 text-primary-600 hover:bg-primary-50 rounded"
+                                                        title="Check-in"
+                                                    >
+                                                        <UserCheck className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleViewMember(member)}
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                        title="Ver detalles"
+                                                    >
+                                                        <Eye className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditMember(member)}
+                                                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                                                        title="Editar"
+                                                    >
+                                                        <Edit className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                                <div className="flex-1 flex justify-between sm:hidden">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page === 1}
+                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Anterior
+                                    </button>
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page >= totalPages}
+                                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Siguiente
+                                    </button>
+                                </div>
+                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-700">
+                                            Mostrando <span className="font-medium">{(page - 1) * limit + 1}</span> a{' '}
+                                            <span className="font-medium">{Math.min(page * limit, total)}</span> de{' '}
+                                            <span className="font-medium">{total}</span> resultados
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                            <button
+                                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                disabled={page === 1}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronLeft className="h-5 w-5" />
+                                            </button>
+                                            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                                Página {page} de {totalPages}
+                                            </span>
+                                            <button
+                                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={page >= totalPages}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronRight className="h-5 w-5" />
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

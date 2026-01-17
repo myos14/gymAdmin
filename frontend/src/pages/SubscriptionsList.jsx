@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, AlertCircle, CheckCircle, XCircle, CreditCard } from 'lucide-react';
+import { Plus, Search, Calendar, AlertCircle, CheckCircle, XCircle, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { subscriptionService } from '../services/subscriptionService';
 import SubscriptionModal from '../components/SubscriptionModal';
 
@@ -10,22 +10,33 @@ function SubscriptionsList() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [notification, setNotification] = useState(null);
+    
+    // Pagination
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const limit = 50;
 
     useEffect(() => {
         loadSubscriptions();
-    }, [statusFilter]);
+    }, [statusFilter, page]);
 
     const loadSubscriptions = async () => {
         try {
             setLoading(true);
-            const filters = {};
+            const skip = (page - 1) * limit;
+            
+            const filters = {
+                skip,
+                limit
+            };
         
             if (statusFilter !== 'all') {
                 filters.status = statusFilter;
             }
         
             const data = await subscriptionService.getAllSubscriptions(filters);
-            setSubscriptions(data);
+            setSubscriptions(data.subscriptions);
+            setTotal(data.total);
         } catch (error) {
             console.error('Error loading subscriptions:', error);
             showNotification('Error al cargar suscripciones', 'error');
@@ -63,6 +74,11 @@ function SubscriptionsList() {
     const showNotification = (message, type) => {
         setNotification({ message, type });
         setTimeout(() => setNotification(null), 3000);
+    };
+
+    const handleFilterChange = (value) => {
+        setStatusFilter(value);
+        setPage(1); // Reset to first page on filter change
     };
 
     const calculateDaysRemaining = (endDate) => {
@@ -148,6 +164,8 @@ function SubscriptionsList() {
         return days >= 0 && days <= 7;
     }).length;
 
+    const totalPages = Math.ceil(total / limit);
+
     return (
         <div className="p-6 space-y-6 bg-primary-50 min-h-screen">
             {/* Notification */}
@@ -181,7 +199,7 @@ function SubscriptionsList() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-secondary">Total</p>
-                            <p className="text-2xl font-bold text-primary">{subscriptions.length}</p>
+                            <p className="text-2xl font-bold text-primary">{total}</p>
                         </div>
                         <div className="bg-primary-100 rounded-full p-3">
                             <CreditCard className="h-6 w-6 text-primary-600" />
@@ -247,7 +265,7 @@ function SubscriptionsList() {
                     {/* Status Filter */}
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => handleFilterChange(e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
                         <option value="all">Todos los estados</option>
@@ -266,89 +284,143 @@ function SubscriptionsList() {
                         <p className="mt-4 text-secondary">Cargando suscripciones...</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Miembro
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Plan
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Inicio
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Fin
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Estado
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Monto
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                        Acciones
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredSubscriptions.length === 0 ? (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                                            No se encontraron suscripciones
-                                        </td>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Miembro
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Plan
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Inicio
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Fin
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Estado
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Monto
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Acciones
+                                        </th>
                                     </tr>
-                                ) : (
-                                    filteredSubscriptions.map((subscription, index) => {
-                                        const daysRemaining = calculateDaysRemaining(subscription.end_date);
-                                        
-                                        return (
-                                            <tr 
-                                                key={subscription.id} 
-                                                className={`${
-                                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                } hover:bg-primary-50 transition-colors`}
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {filteredSubscriptions.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                                                No se encontraron suscripciones
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredSubscriptions.map((subscription, index) => {
+                                            const daysRemaining = calculateDaysRemaining(subscription.end_date);
+                                            
+                                            return (
+                                                <tr 
+                                                    key={subscription.id} 
+                                                    className={`${
+                                                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                    } hover:bg-primary-50 transition-colors`}
+                                                >
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {subscription.member?.first_name} {subscription.member?.last_name_paternal}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">{subscription.plan?.name}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                        {formatDate(subscription.start_date)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">{formatDate(subscription.end_date)}</div>
+                                                        {getDaysRemainingBadge(daysRemaining, subscription.status)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        {getStatusBadge(subscription.status)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                                        {formatPrice(subscription.plan_price || subscription.plan?.price)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                                        {subscription.status === 'active' && (
+                                                            <button
+                                                                onClick={() => handleCancelSubscription(subscription)}
+                                                                className="text-error-600 hover:text-error-900"
+                                                            >
+                                                                Cancelar
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                                <div className="flex-1 flex justify-between sm:hidden">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page === 1}
+                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Anterior
+                                    </button>
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page >= totalPages}
+                                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Siguiente
+                                    </button>
+                                </div>
+                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-700">
+                                            Mostrando <span className="font-medium">{(page - 1) * limit + 1}</span> a{' '}
+                                            <span className="font-medium">{Math.min(page * limit, total)}</span> de{' '}
+                                            <span className="font-medium">{total}</span> resultados
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                            <button
+                                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                disabled={page === 1}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {subscription.member?.first_name} {subscription.member?.last_name_paternal}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">{subscription.plan?.name}</div>
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                    {formatDate(subscription.start_date)}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">{formatDate(subscription.end_date)}</div>
-                                                    {getDaysRemainingBadge(daysRemaining, subscription.status)}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    {getStatusBadge(subscription.status)}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                                    {formatPrice(subscription.plan_price || subscription.plan?.price)}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                                    {subscription.status === 'active' && (
-                                                        <button
-                                                            onClick={() => handleCancelSubscription(subscription)}
-                                                            className="text-error-600 hover:text-error-900"
-                                                        >
-                                                            Cancelar
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                <ChevronLeft className="h-5 w-5" />
+                                            </button>
+                                            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                                Página {page} de {totalPages}
+                                            </span>
+                                            <button
+                                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={page >= totalPages}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronRight className="h-5 w-5" />
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

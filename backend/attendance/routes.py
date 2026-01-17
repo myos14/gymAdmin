@@ -18,20 +18,48 @@ from attendance.schemas import(
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
+# Helper function para auto-checkout
+def _auto_checkout_expired(db: Session, hours_limit: int = 4):
+    """Helper: Auto-checkout de sesiones expiradas"""
+    time_limit = datetime.now() - timedelta(hours=hours_limit)
+    
+    expired = db.query(Attendance).filter(
+        and_(
+            Attendance.check_out_time.is_(None),
+            Attendance.check_in_time <= time_limit
+        )
+    ).all()
+    
+    for session in expired:
+        session.check_out_time = session.check_in_time + timedelta(hours=hours_limit)
+        session.duration_minutes = hours_limit * 60
+        if session.notes:
+            session.notes += f" [Auto-checkout {hours_limit}h]"
+        else:
+            session.notes = f"Auto-checkout {hours_limit}h"
+    
+    if expired:
+        db.commit()
+    
+    return len(expired)
+
 @router.post("/check-in", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
 def check_in(attendance: AttendanceCheckIn, db: Session = Depends(get_db)):
     """Registrar entrada de un miembro"""
     
-    #Verify member exists
+    # Auto-checkout de sesiones expiradas
+    _auto_checkout_expired(db, hours_limit=4)
+    
+    # Verify member exists
     member = db.query(Member).filter(Member.id == attendance.member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado")
     
-    #Check if member is active
+    # Check if member is active
     if not member.is_active:
         raise HTTPException(status_code=400, detail="Miembro no activo")
     
-    #Get active subscription
+    # Get active subscription
     active_subscription = db.query(Subscription).filter(
         and_(
             Subscription.member_id == attendance.member_id,
@@ -44,25 +72,25 @@ def check_in(attendance: AttendanceCheckIn, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=400,
             detail="El miembro no tiene una suscripción activa. No puede ingresar."
-            )
+        )
         
-    #Checm if already checked in today (without checkout)
+    # Check if already checked in today (without checkout)
     today = date.today()
     existing_checkin = db.query(Attendance).filter(
         and_(
             Attendance.member_id == attendance.member_id,
             Attendance.date == today,
-            Attendance.check_out_time.is_(None) # Sin check-out
+            Attendance.check_out_time.is_(None)
         )
     ).first()
     
     if existing_checkin:
         raise HTTPException(
             status_code=400,
-            detail=f"El miembro ya tiene un check-in activo hoy a las {existing_checkin.check_in_time.strftime('%H: %M')}"
+            detail=f"El miembro ya tiene un check-in activo hoy a las {existing_checkin.check_in_time.strftime('%H:%M')}"
         )
         
-    #Create attendance record
+    # Create attendance record
     db_attendance = Attendance(
         member_id=attendance.member_id,
         subscription_id=active_subscription.id,
@@ -94,15 +122,15 @@ def check_out(
             detail=f"Este registro ya tiene check-out a las {db_attendance.check_out_time.strftime('%H:%M')}"
         )
         
-    #Set check-out time
+    # Set check-out time
     now = datetime.now()
     db_attendance.check_out_time = now
     
-    #Calculate duration in minutes
+    # Calculate duration in minutes
     duration = now - db_attendance.check_in_time
     db_attendance.duration_minutes = int(duration.total_seconds() / 60)
     
-    #Update notes if provided
+    # Update notes if provided
     if checkout_data.notes:
         db_attendance.notes = checkout_data.notes
     
@@ -116,7 +144,7 @@ def get_attendances(
     member_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    only_active: bool = False, #solo check-ins sin check-out
+    only_active: bool = False,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -131,7 +159,7 @@ def get_attendances(
     if end_date:
         query = query.filter(Attendance.date <= end_date)
     if only_active:
-        query = query. filter(Attendance.check_out_time.is_(None))
+        query = query.filter(Attendance.check_out_time.is_(None))
         
     attendances = query.order_by(Attendance.check_in_time.desc()).offset(skip).limit(limit).all()
     
@@ -151,7 +179,7 @@ def get_attendance(attendance_id: int, db: Session = Depends(get_db)):
 def get_member_attendance_history(
     member_id: int,
     days: int = 30,
-    db:Session = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """Obtener el historial de asistencias de un miembro"""
     member = db.query(Member).filter(Member.id == member_id).first()
@@ -195,13 +223,13 @@ def get_daily_stats(
     total_visits = len(attendances)
     unique_members = len(set(a.member_id for a in attendances))
     
-    #Calculate average duration (only for completed visits)
+    # Calculate average duration (only for completed visits)
     completed_visits = [a for a in attendances if a.duration_minutes is not None]
     avg_duration = None
     if completed_visits:
         avg_duration = sum(a.duration_minutes for a in completed_visits) / len(completed_visits)
     
-    #Count current members in gym (if target_date is today)
+    # Count current members in gym (if target_date is today)
     current_in_gym = 0
     if target_date == date.today():
         current_in_gym = db.query(Attendance).filter(
@@ -216,7 +244,16 @@ def get_daily_stats(
         unique_members=unique_members,
         average_duration_minutes=avg_duration,
         current_members_in_gym=current_in_gym
-    )    
+    )
+
+@router.post("/auto-checkout", status_code=status.HTTP_200_OK)
+def manual_auto_checkout(db: Session = Depends(get_db)):
+    """Ejecutar auto-checkout manualmente"""
+    count = _auto_checkout_expired(db, hours_limit=4)
+    return {
+        "message": "Auto-checkout ejecutado",
+        "sessions_closed": count
+    }
     
 @router.delete("/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_attendance(attendance_id: int, db: Session = Depends(get_db)):

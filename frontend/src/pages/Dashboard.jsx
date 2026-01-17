@@ -7,6 +7,8 @@ import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
 import PlanMetrics from '../components/dashboard/PlanMetrics';
 import { dashboardService } from '../services/dashboardService';
+import api from '../services/api';
+import { attendanceService } from '../services/attendanceService';
 
 function Dashboard() {
     const [dashboardData, setDashboardData] = useState(null);
@@ -14,6 +16,9 @@ function Dashboard() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        api.post('/attendance/auto-checkout')
+            .catch(err => console.log('Auto-checkout:', err));
+        
         loadDashboard();
     }, []);
 

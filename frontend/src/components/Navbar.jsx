@@ -27,10 +27,15 @@ function Navbar() {
         <>
             {/* Notification */}
             {notification && (
-                <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg ${
-                    notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-                } text-white`}>
-                    {notification.message}
+                <div className={`fixed top-20 right-4 z-[60] px-6 py-4 rounded-lg shadow-2xl border-2 ${
+                    notification.type === 'success' 
+                        ? 'bg-green-500 border-green-600' 
+                        : 'bg-red-500 border-red-600'
+                } text-white font-medium min-w-[300px] transform transition-all duration-300 ease-out`}>
+                    <div className="flex items-center gap-2">
+                        {notification.type === 'success' ? '✓' : '✕'}
+                        <span>{notification.message}</span>
+                    </div>
                 </div>
             )}
 

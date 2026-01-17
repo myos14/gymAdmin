@@ -32,6 +32,7 @@ def calculate_end_date(start_date: date, duration_days: int) -> date:
     return start_date + timedelta(days=duration_days)
 
 def update_subscription_status(subscription: Subscription):
+    """Update subscription status if expired"""
     if subscription.end_date < date.today() and subscription.status == "active":
         subscription.status = "expired"
 
@@ -65,8 +66,11 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     else:
         end_date = calculate_end_date(subscription.start_date, plan.duration_days)
     
+    # ← FIX: Excluir payment_method del dump porque no existe en Subscription
+    subscription_data = subscription.model_dump(exclude={'payment_method'})
+    
     db_subscription = Subscription(
-        **subscription.model_dump(),
+        **subscription_data,
         plan_price=plan.price,
         end_date=end_date,
         status="active"
@@ -75,9 +79,7 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     db.add(db_subscription)
     db.flush()
     
-    from payments.models import PaymentRecord
-    from decimal import Decimal
-    
+    # Crear registro de pago
     payment_amount = subscription.amount_paid if subscription.amount_paid > 0 else plan.price
     
     # Map payment method from frontend to database format

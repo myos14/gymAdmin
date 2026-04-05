@@ -42,8 +42,8 @@ function SubscriptionModal({ onClose, onSuccess }) {
 
     const loadMembers = async () => {
         try {
-            const data = await memberService.getAllMembers({ active_only: true });
-            setMembers(data);
+            const data = await memberService.getAllMembers({ is_active: true, limit: 100 });
+            setMembers(data.members || []);
         } catch (error) {
             console.error('Error loading members:', error);
         }

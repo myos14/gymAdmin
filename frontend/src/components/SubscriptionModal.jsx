@@ -74,15 +74,32 @@ function SubscriptionModal({ onClose, onSuccess }) {
         setSelectedPlan(plan);
         
         const start = new Date(formData.start_date + 'T00:00:00');
-        const end = new Date(start);
-        
-        if (plan.duration_days === 0) {
+        const days = plan.duration_days;
+
+        if (days === 0) {
             setEndDate('permanent');
             return;
         }
-        
-        end.setDate(end.getDate() + plan.duration_days);
-        setEndDate(end.toISOString().split('T')[0]);
+
+        const end = new Date(start);
+
+        if (days === 30) {
+            end.setMonth(end.getMonth() + 1);
+        } else if (days === 60) {
+            end.setMonth(end.getMonth() + 2);
+        } else if (days === 90) {
+            end.setMonth(end.getMonth() + 3);
+        } else if (days === 180) {
+            end.setMonth(end.getMonth() + 6);
+        } else if (days === 365) {
+            end.setFullYear(end.getFullYear() + 1);
+        } else {
+            end.setDate(end.getDate() + days);
+        }
+
+        setEndDate(end.toLocaleDateString('es-MX', { 
+            year: 'numeric', month: 'long', day: 'numeric' 
+        }));
     };
 
     const handleChange = (e) => {
@@ -291,7 +308,7 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
                                 <Calendar className="h-5 w-5 text-gray-400" />
                                 <span className="text-gray-700">
-                                    {endDate ? formatDate(endDate) : 'Seleccione un plan'}
+                                    {endDate ? {endDate} : 'Seleccione un plan'}
                                 </span>
                             </div>
                         </div>

@@ -191,16 +191,29 @@ function NewMembershipModal({ onClose, onSuccess }) {
     };
 
     const calculateEndDate = () => {
-        if (!selectedPlan) return null;
+        if (!selectedPlan || !formData.start_date) return null;
         
         const start = new Date(formData.start_date + 'T00:00:00');
-        const end = new Date(start);
+        const days = selectedPlan.duration_days;
         
-        if (selectedPlan.duration_days === 0 || selectedPlan.duration_days > 36500) {
-            return 'Permanente';
+        if (days === 0 || days > 36500) return 'Permanente';
+        
+        let end = new Date(start);
+        
+        if (days === 30) {
+            end.setMonth(end.getMonth() + 1);
+        } else if (days === 60) {
+            end.setMonth(end.getMonth() + 2);
+        } else if (days === 90) {
+            end.setMonth(end.getMonth() + 3);
+        } else if (days === 180) {
+            end.setMonth(end.getMonth() + 6);
+        } else if (days === 365) {
+            end.setFullYear(end.getFullYear() + 1);
+        } else {
+            // VCustom days
+            end.setDate(end.getDate() + days);
         }
-        
-        end.setDate(end.getDate() + selectedPlan.duration_days);
         
         return end.toLocaleDateString('es-MX', { 
             year: 'numeric', 

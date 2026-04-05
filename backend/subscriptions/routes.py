@@ -24,11 +24,24 @@ class SubscriptionRenew(BaseModel):
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
+from dateutil.relativedelta import relativedelta
+
 def calculate_end_date(start_date: date, duration_days: int) -> date:
-    """Calcular fecha de fin, manejando planes permanentes"""
     if duration_days == 0:
         return start_date + timedelta(days=36500)
-    return start_date + timedelta(days=duration_days)
+    elif duration_days == 30:
+        return start_date + relativedelta(months=1)
+    elif duration_days == 60:
+        return start_date + relativedelta(months=2)
+    elif duration_days == 90:
+        return start_date + relativedelta(months=3)
+    elif duration_days == 180:
+        return start_date + relativedelta(months=6)
+    elif duration_days == 365:
+        return start_date + relativedelta(years=1)
+    else:
+        # Custom days
+        return start_date + timedelta(days=duration_days)
 
 def update_subscription_status(subscription: Subscription):
     """Update subscription status if expired"""

@@ -193,7 +193,7 @@ function NewMembershipModal({ onClose, onSuccess }) {
     const calculateEndDate = () => {
         if (!selectedPlan) return null;
         
-        const start = new Date(formData.start_date);
+        const start = new Date(formData.start_date + 'T00:00:00');
         const end = new Date(start);
         
         if (selectedPlan.duration_days === 0 || selectedPlan.duration_days > 36500) {

@@ -8,16 +8,18 @@ import MembersList from './pages/MembersList';
 import PlansList from './pages/PlansList';
 import SubscriptionsList from './pages/SubscriptionsList';
 import Reports from './pages/Reports';
+import MemberQRPage from './pages/MemberQRPage';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Ruta pública */}
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/member-qr/:token" element={<MemberQRPage />} />
 
-          {/* Rutas protegidas */}
+          {/* Protected Routes */}
           <Route
             path="/*"
             element={

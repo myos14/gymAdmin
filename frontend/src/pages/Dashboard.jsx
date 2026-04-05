@@ -1,26 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Users, ClipboardCheck, UserCheck, CreditCard, DollarSign, AlertCircle } from 'lucide-react';
-import StatsCard from '../components/dashboard/StatsCard';
+import { useLocation } from 'react-router-dom';
+import { dashboardService } from '../services/dashboardService';
 import ExpiringSubscriptions from '../components/dashboard/ExpiringSubscriptions';
 import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
 import PlanMetrics from '../components/dashboard/PlanMetrics';
-import { dashboardService } from '../services/dashboardService';
+import StatsCard from '../components/dashboard/StatsCard';
 import api from '../services/api';
-import { attendanceService } from '../services/attendanceService';
+
 
 function Dashboard() {
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const location = useLocation();
 
     useEffect(() => {
         api.post('/attendance/auto-checkout')
             .catch(err => console.log('Auto-checkout:', err));
-        
         loadDashboard();
-    }, []);
+    }, [location]);
 
     const loadDashboard = async () => {
         try {

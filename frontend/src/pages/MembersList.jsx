@@ -11,19 +11,16 @@ function MembersList() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
     const [editingMember, setEditingMember] = useState(null);
     const [checkInMember, setCheckInMember] = useState(null);
     const [notification, setNotification] = useState(null);
     const [currentInGym, setCurrentInGym] = useState(0);
     
-    // Pagination
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const limit = 50;
 
-    // Métricas totales (sin filtrar)
     const [metrics, setMetrics] = useState({
         total: 0,
         active: 0,
@@ -41,11 +38,9 @@ function MembersList() {
 
     const loadMetrics = async () => {
         try {
-            // Obtener totales sin filtros
             const response = await getMembers({ limit: 1 });
             const totalMembers = response.data.total;
             
-            // Obtener activos
             const activeResponse = await getMembers({ is_active: true, limit: 1 });
             const activeCount = activeResponse.data.total;
             
@@ -78,7 +73,7 @@ function MembersList() {
             }
             
             const response = await getMembers(params);
-            setMembers(response.data.members);
+            setMembers(response.data.members || []);
             setTotal(response.data.total);
         } catch (error) {
             console.error('Error loading members:', error);
@@ -112,14 +107,6 @@ function MembersList() {
 
     const handleCheckIn = (member) => {
         setCheckInMember(member);
-    };
-
-    const handleModalClose = (shouldRefresh) => {
-        setIsModalOpen(false);
-        if (shouldRefresh) {
-            loadMembers();
-            loadMetrics();
-        }
     };
 
     const handleEditMember = (member) => {
@@ -163,7 +150,7 @@ function MembersList() {
                 <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-secondary">Total</p>
+                            <p className="text-sm text-secondary mb-1">Total</p>
                             <p className="text-2xl font-bold text-primary">{metrics.total}</p>
                         </div>
                         <div className="bg-primary-100 rounded-full p-3">
@@ -250,9 +237,9 @@ function MembersList() {
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-200">
+                                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                             Nombre
@@ -272,12 +259,10 @@ function MembersList() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {members.map((member, index) => (
+                                    {members.map((member) => (
                                         <tr 
                                             key={member.id} 
-                                            className={`${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                            } hover:bg-primary-50 transition-colors`}
+                                            className="even:bg-gray-50 hover:bg-primary-50 transition-colors"
                                         >
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 <div className="text-sm font-medium text-gray-900">
@@ -289,8 +274,8 @@ function MembersList() {
                                                 {member.email ? (
                                                     <div className="text-sm text-gray-600">{member.email}</div>
                                                 ) : (
-                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                                                        Sin registrar
+                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
+                                                        Sin registro
                                                     </span>
                                                 )}
                                             </td>
@@ -298,8 +283,8 @@ function MembersList() {
                                                 {member.phone ? (
                                                     <div className="text-sm text-gray-600">{member.phone}</div>
                                                 ) : (
-                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                                                        Sin registrar
+                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
+                                                        Sin registro
                                                     </span>
                                                 )}
                                             </td>
@@ -313,24 +298,24 @@ function MembersList() {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                <div className="flex items-center justify-center gap-2">
+                                                <div className="flex items-center justify-center gap-1">
                                                     <button
                                                         onClick={() => handleCheckIn(member)}
-                                                        className="p-1.5 text-primary-600 hover:bg-primary-50 rounded"
+                                                        className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md transition-colors"
                                                         title="Check-in"
                                                     >
                                                         <UserCheck className="h-5 w-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleViewMember(member)}
-                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                                         title="Ver detalles"
                                                     >
                                                         <Eye className="h-5 w-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleEditMember(member)}
-                                                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                                                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
                                                         title="Editar"
                                                     >
                                                         <Edit className="h-5 w-5" />

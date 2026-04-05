@@ -35,11 +35,9 @@ function NewMembershipModal({ onClose, onSuccess }) {
     const loadPlans = async () => {
         try {
             const data = await planService.getAllPlans('active');
-            const sortedPlans = [...data].sort((a, b) => {
-                const durationA = a.duration_days || 0;
-                const durationB = b.duration_days || 0;
-                return durationA - durationB;
-            });
+            const sortedPlans = [...data]
+                .filter(plan => plan.name.toLowerCase() !== 'staff')
+                .sort((a, b) => (a.price || 0) - (b.price || 0));
             setPlans(sortedPlans);
         } catch (error) {
             console.error('Error loading plans:', error);

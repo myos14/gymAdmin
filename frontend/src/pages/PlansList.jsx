@@ -24,7 +24,7 @@ function PlansList() {
             const statusFilter = showInactive ? 'inactive' : 'active';
             const data = await planService.getAllPlans(statusFilter);
             
-            const sortedPlans = data.sort((a, b) => a.duration_days - b.duration_days);
+            const sortedPlans = data.sort((a, b) => (a.price || 0) - (b.price || 0));
             setPlans(sortedPlans);
         } catch (error) {
             console.error('Error loading plans:', error);

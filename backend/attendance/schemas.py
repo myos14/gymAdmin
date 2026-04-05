@@ -7,15 +7,15 @@ class AttendanceBase(BaseModel):
     member_id: int = Field(..., gt=0)
     notes: Optional[str] = None
     
-#Schema para check-in (crear asistencia)
+#Schema for check-in (create attendance)
 class AttendanceCheckIn(AttendanceBase):
     pass
 
-#Schema para check-out( actualizar)
+#Schema for check-out (update attendance)
 class AttendanceCheckOut(BaseModel):
     notes: Optional[str] = None
 
-# Schema para nuevo miembro
+# Schema for new member
 class MemberInfo(BaseModel):
     first_name: str
     last_name_paternal: str
@@ -25,7 +25,7 @@ class MemberInfo(BaseModel):
     class Config:
         from_attributes = True
 
-#Schema para respuesta (lo que devuelve la API)
+# Schema for response (API returns)
 class AttendanceResponse(AttendanceBase):
     id: int
     subscription_id: Optional[int] = None
@@ -38,14 +38,14 @@ class AttendanceResponse(AttendanceBase):
     class Config:
         from_attributes = True
 
-#Schema con datos del miembro (para listados)
+# Schema with member data (for lists)
 class AttendanceWithMemberResponse(AttendanceResponse):
     member: MemberInfo
     
     class Config:
         from_attributes = True
         
-#Schema para estadisticas
+# Schema for statistics
 class AttendanceStats(BaseModel):
     total_visits: int
     unique_members: int

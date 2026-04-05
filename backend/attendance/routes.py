@@ -18,7 +18,7 @@ from attendance.schemas import(
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
-# Helper function para auto-checkout
+# Helper function to auto-safe
 def _auto_checkout_expired(db: Session, hours_limit: int = 4):
     """Helper: Auto-checkout de sesiones expiradas"""
     time_limit = datetime.now() - timedelta(hours=hours_limit)
@@ -47,19 +47,15 @@ def _auto_checkout_expired(db: Session, hours_limit: int = 4):
 def check_in(attendance: AttendanceCheckIn, db: Session = Depends(get_db)):
     """Registrar entrada de un miembro"""
     
-    # Auto-checkout de sesiones expiradas
     _auto_checkout_expired(db, hours_limit=4)
     
-    # Verify member exists
     member = db.query(Member).filter(Member.id == attendance.member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado")
     
-    # Check if member is active
     if not member.is_active:
         raise HTTPException(status_code=400, detail="Miembro no activo")
     
-    # Get active subscription
     active_subscription = db.query(Subscription).filter(
         and_(
             Subscription.member_id == attendance.member_id,
@@ -126,11 +122,9 @@ def check_out(
     now = datetime.now()
     db_attendance.check_out_time = now
     
-    # Calculate duration in minutes
     duration = now - db_attendance.check_in_time
     db_attendance.duration_minutes = int(duration.total_seconds() / 60)
     
-    # Update notes if provided
     if checkout_data.notes:
         db_attendance.notes = checkout_data.notes
     
@@ -229,7 +223,6 @@ def get_daily_stats(
     if completed_visits:
         avg_duration = sum(a.duration_minutes for a in completed_visits) / len(completed_visits)
     
-    # Count current members in gym (if target_date is today)
     current_in_gym = 0
     if target_date == date.today():
         current_in_gym = db.query(Attendance).filter(

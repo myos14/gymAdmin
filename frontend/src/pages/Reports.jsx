@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, Users, DollarSign, Calendar, Activity, Award, Database } from 'lucide-react';
 import { reportsService } from '../services/reportsService';
-import axios from 'axios';
+import api from '../services/api';
 
 function Reports() {
     const [period, setPeriod] = useState('month');
@@ -27,39 +27,30 @@ function Reports() {
     };
 
     const handleBackup = async () => {
-        try {
-            setBackupLoading(true);
-            
-            const response = await axios.get(
-                `${import.meta.env.VITE_API_URL}/backup/database`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    },
-                    responseType: 'blob'
-                }
-            );
+    try {
+        setBackupLoading(true);
+        const response = await api.get('/backup/database', {
+            responseType: 'blob'
+        });
 
-            // Crear link de descarga
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            
-            const fecha = new Date().toISOString().split('T')[0];
-            link.setAttribute('download', `fuerzafit_backup_${fecha}.sql`);
-            
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            
-            alert('Respaldo generado exitosamente');
-        } catch (error) {
-            console.error('Error al generar respaldo:', error);
-            alert('Error al generar respaldo de base de datos');
-        } finally {
-            setBackupLoading(false);
-        }
-    };
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        const fecha = new Date().toISOString().split('T')[0];
+        link.setAttribute('download', `fuerzafit_backup_${fecha}.sql`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        alert('Respaldo generado exitosamente');
+    } catch (error) {
+        console.error('Error al generar respaldo:', error);
+        alert('Error al generar respaldo de base de datos');
+    } finally {
+        setBackupLoading(false);
+    }
+};
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('es-MX', {
@@ -92,7 +83,7 @@ function Reports() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 bg-primary-50 min-h-screen">
             {/* Header con botón de backup */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>

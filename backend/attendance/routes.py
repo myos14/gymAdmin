@@ -1,3 +1,5 @@
+import os
+from attendance.qr_service import generate_member_qr_token, validate_member_qr_token
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
@@ -260,3 +262,100 @@ def delete_attendance(attendance_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return None
+
+@router.get("/member/{member_id}/qr-token")
+def get_member_qr_token(member_id: int, db: Session = Depends(get_db)):
+    member = db.query(Member).filter(Member.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Miembro no encontrado")
+    if not member.is_active:
+        raise HTTPException(status_code=400, detail="Miembro inactivo")
+
+    active_subscription = db.query(Subscription).filter(
+        and_(
+            Subscription.member_id == member_id,
+            Subscription.status == "active",
+            Subscription.end_date >= date.today()
+        )
+    ).first()
+
+    if not active_subscription:
+        raise HTTPException(status_code=400, detail="Sin suscripción activa")
+
+    token = generate_member_qr_token(member_id)
+    base_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+    return {
+        "token": token,
+        "qr_url": f"{base_url}/member-qr/{token}",
+        "member_id": member_id,
+        "member_name": f"{member.first_name} {member.last_name_paternal}"
+    }
+
+
+@router.post("/qr-checkin")
+def qr_checkin(token: str, db: Session = Depends(get_db)):
+    try:
+        member_id = validate_member_qr_token(token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    member = db.query(Member).filter(Member.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Miembro no encontrado")
+    if not member.is_active:
+        raise HTTPException(status_code=400, detail="Miembro inactivo")
+
+    active_subscription = db.query(Subscription).filter(
+        and_(
+            Subscription.member_id == member_id,
+            Subscription.status == "active",
+            Subscription.end_date >= date.today()
+        )
+    ).first()
+
+    if not active_subscription:
+        raise HTTPException(status_code=400, detail="Sin suscripción activa. No puede ingresar.")
+
+    _auto_checkout_expired(db, hours_limit=4)
+
+    today = date.today()
+    existing = db.query(Attendance).filter(
+        and_(
+            Attendance.member_id == member_id,
+            Attendance.date == today,
+            Attendance.check_out_time.is_(None)
+        )
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ya tiene entrada activa desde las {existing.check_in_time.strftime('%H:%M')}"
+        )
+
+    db_attendance = Attendance(
+        member_id=member_id,
+        subscription_id=active_subscription.id,
+        notes="Check-in por QR"
+    )
+    db.add(db_attendance)
+    db.commit()
+    db.refresh(db_attendance)
+
+    days_remaining = (active_subscription.end_date - today).days
+
+    return {
+        "success": True,
+        "attendance_id": db_attendance.id,
+        "member_id": member_id,
+        "member_name": f"{member.first_name} {member.last_name_paternal}"
+                        + (f" {member.last_name_maternal}" if member.last_name_maternal else ""),
+        "check_in_time": db_attendance.check_in_time.strftime("%H:%M"),
+        "subscription": {
+            "plan_name": active_subscription.plan.name if active_subscription.plan else "Plan",
+            "end_date": active_subscription.end_date.strftime("%d/%m/%Y"),
+            "days_remaining": days_remaining,
+            "alert": "warning" if days_remaining <= 5 else "ok"
+        }
+    }

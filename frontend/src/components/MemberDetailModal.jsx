@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, Phone, Mail, AlertCircle, Activity, Edit } from 'lucide-react';
 import { attendanceService } from '../services/attendanceService';
+import { QrCode, ScanLine } from 'lucide-react';
+import MemberQRModal from './MemberQRModal';
+import QRScannerModal from './QRScannerModal';
 
 function MemberDetailModal({ member, onClose }) {
     const [attendanceHistory, setAttendanceHistory] = useState([]);
@@ -56,6 +59,9 @@ function MemberDetailModal({ member, onClose }) {
         }
         return age;
     };
+
+    const [showQRModal, setShowQRModal] = useState(false);
+    const [showScanner, setShowScanner] = useState(false);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -203,14 +209,30 @@ function MemberDetailModal({ member, onClose }) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 p-6 border-t border-gray-200 sticky bottom-0 bg-white">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                    >
+                <div className="flex items-center justify-between p-6 border-t border-gray-200 sticky bottom-0 bg-white">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowQRModal(true)}
+                            className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                        >
+                            <QrCode className="h-4 w-4" />
+                            Ver QR
+                        </button>
+                        <button
+                            onClick={() => setShowScanner(true)}
+                            className="flex items-center gap-2 px-3 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium"
+                        >
+                            <ScanLine className="h-4 w-4" />
+                            Escanear QR
+                        </button>
+                    </div>
+                    <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                         Cerrar
                     </button>
                 </div>
+
+                {showQRModal && <MemberQRModal member={member} onClose={() => setShowQRModal(false)} />}
+                {showScanner && <QRScannerModal onClose={() => setShowScanner(false)} />}
             </div>
         </div>
     );

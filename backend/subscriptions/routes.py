@@ -15,6 +15,12 @@ from subscriptions.schemas import SubscriptionCreate, SubscriptionUpdate, Subscr
 from users.auth import get_current_active_user, require_admin
 from users.models import User
 
+from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
+
+def get_today():
+    return datetime.now(ZoneInfo("America/Mexico_City")).date()
+
 class SubscriptionRenew(BaseModel):
     plan_id: Optional[int] = None
     start_date: Optional[date] = None
@@ -45,7 +51,7 @@ def calculate_end_date(start_date: date, duration_days: int) -> date:
 
 def update_subscription_status(subscription: Subscription):
     """Update subscription status if expired"""
-    if subscription.end_date < date.today() and subscription.status == "active":
+    if subscription.end_date < get_today() and subscription.status == "active":
         subscription.status = "expired"
 
 @router.post("/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
@@ -62,7 +68,7 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
         and_(
             Subscription.member_id == subscription.member_id,
             Subscription.status == "active",
-            Subscription.end_date >= date.today()
+            Subscription.end_date >= get_today()
         )
     ).first()
     
@@ -141,7 +147,7 @@ def renew_subscription(
         and_(
             Subscription.member_id == old_subscription.member_id,
             Subscription.status == "active",
-            Subscription.end_date >= date.today(),
+            Subscription.end_date >= get_today(),
             Subscription.id != subscription_id
         )
     ).first()
@@ -155,10 +161,10 @@ def renew_subscription(
     if renew_data.start_date:
         new_start_date = renew_data.start_date
     else:
-        if old_subscription.end_date >= date.today():
+        if old_subscription.end_date >= get_today():
             new_start_date = old_subscription.end_date + timedelta(days=1)
         else:
-            new_start_date = date.today()
+            new_start_date = get_today()
     
     new_end_date = calculate_end_date(new_start_date, plan.duration_days)
     
@@ -204,7 +210,7 @@ def renew_subscription(
 def get_subscriptions(
     status: Optional[str] = Query(None, pattern="^(active|expired|cancelled)$"),
     member_id: Optional[int] = None,
-    search: Optional[str] = None,  # ← AGREGADO
+    search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -346,7 +352,7 @@ def get_member_active_subscription(
         and_(
             Subscription.member_id == member_id,
             Subscription.status == "active",
-            Subscription.end_date >= date.today()
+            Subscription.end_date >= get_today()
         )
     ).first()
     

@@ -24,17 +24,25 @@ class PaymentRecordUpdate(BaseModel):
     payment_method: Optional[str] = Field(None, pattern="^(efectivo|tarjeta|transferencia|otro)$")
     reference_number: Optional[str] = Field(None, max_length=100)
     notes: Optional[str] = None
-    
-class PaymentRecordResponse(PaymentRecordBase):
+
+class MemberBasic(BaseModel):
     id: int
-    created_at: datetime
+    first_name: str
+    last_name_paternal: str
     
     class Config:
         from_attributes = True
-        
+
+class PaymentRecordResponse(PaymentRecordBase):
+    id: int
+    created_at: datetime
+    member: Optional[MemberBasic] = None
+    
+    class Config:
+        from_attributes = True
+
 # Payment schemas
 class PaymentSummary(BaseModel):
     total_amount: Decimal
     payment_count: int
     payment_method_breakdown: dict
-    

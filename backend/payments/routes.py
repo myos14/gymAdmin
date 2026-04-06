@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_
 from typing import List, Optional
 from datetime import date, timedelta
@@ -67,7 +67,7 @@ def get_payments(
     db: Session = Depends(get_db)
 ):
     """Listar pagos con filtros opcionales"""
-    query = db.query(PaymentRecord)
+    query = db.query(PaymentRecord).options(joinedload(PaymentRecord.member))
     
     if member_id:
         query = query.filter(PaymentRecord.member_id == member_id)

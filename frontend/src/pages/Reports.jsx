@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Users, DollarSign, Calendar, Activity, Award, Database } from 'lucide-react';
 import { reportsService } from '../services/reportsService';
 import { memberService } from '../services/memberService';
+import PaymentsDetailModal from '../components/PaymentsDetailModal';
 import MemberDetailModal from '../components/MemberDetailModal';
 import api from '../services/api';
 
@@ -10,6 +11,7 @@ function Reports() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [backupLoading, setBackupLoading] = useState(false);
+    const [showPaymentsModal, setShowPaymentsModal] = useState(false);
 
     useEffect(() => {
         loadReports();
@@ -134,13 +136,15 @@ function Reports() {
 
             {/* Métricas principales */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard
-                    title="Ingresos Totales"
-                    value={formatCurrency(data.income.total)}
-                    subtitle={`${data.income.payment_count} pagos`}
-                    icon={<DollarSign className="h-6 w-6" />}
-                    color="green"
-                />
+                <div onClick={() => setShowPaymentsModal(true)} className="cursor-pointer">
+                    <MetricCard
+                        title="Ingresos Totales ↗"
+                        value={formatCurrency(data.income.total)}
+                        subtitle={`${data.income.payment_count} pagos · Ver detalle`}
+                        icon={<DollarSign className="h-6 w-6" />}
+                        color="green"
+                    />
+                </div>
                 <MetricCard
                     title="Nuevos Miembros"
                     value={data.members.new_count}
@@ -315,6 +319,15 @@ function Reports() {
                                             <MemberDetailModal
                                                 member={selectedMember}
                                                 onClose={() => setSelectedMember(null)}
+                                            />
+                                        </div>
+                                    )}
+                                    {showPaymentsModal && (
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <PaymentsDetailModal
+                                                startDate={data.start_date}
+                                                endDate={data.end_date}
+                                                onClose={() => setShowPaymentsModal(false)}
                                             />
                                         </div>
                                     )}

@@ -112,3 +112,18 @@ class MemberResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class ActiveSubscriptionInfo(BaseModel):
+    status: str
+    end_date: date
+    plan_name: Optional[str] = None
+    days_remaining: int
+
+    class Config:
+        from_attributes = True
+
+class MemberResponseWithSubscription(MemberResponse):
+    active_subscription: Optional[ActiveSubscriptionInfo] = None
+
+    class Config:
+        from_attributes = True

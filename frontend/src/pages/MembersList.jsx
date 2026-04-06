@@ -253,6 +253,9 @@ function MembersList() {
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                             Estado
                                         </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                            Suscripción
+                                        </th>
                                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
                                             Acciones
                                         </th>
@@ -296,6 +299,19 @@ function MembersList() {
                                                 }`}>
                                                     {member.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {member.active_subscription ? (
+                                                    <div>
+                                                        <span className="px-2 py-1 text-xs rounded-full bg-success-100 text-success-800">
+                                                            Activa
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                                                        Sin suscripción
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 <div className="flex items-center justify-center gap-1">

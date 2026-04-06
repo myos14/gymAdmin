@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
 from database import get_db
 from .models import Member
 from .schemas import MemberResponse, MemberCreate, MemberUpdate
 from datetime import date, datetime
 from typing import Optional
+from members.schemas import MemberResponseWithSubscription, ActiveSubscriptionInfo
+from subscriptions.models import Subscription
+from zoneinfo import ZoneInfo
 
 router = APIRouter(prefix="/members", tags=["Members"])
+
+
+def get_today_mx():
+    return datetime.now(ZoneInfo("America/Mexico_City")).date()
 
 # helper function
 def capitalize_name(name: str) -> str:
@@ -48,10 +55,30 @@ def get_members(
     total = query.count()
     
     # Apply pagination
-    members = query.order_by(Member.created_at.desc()).offset(skip).limit(limit).all()
-    
+    members = query.options(
+        joinedload(Member.subscriptions).joinedload(Subscription.plan)
+    ).order_by(Member.created_at.desc()).offset(skip).limit(limit).all()
+
+    members_data = []
+    for member in members:
+        active_sub = next(
+            (s for s in member.subscriptions 
+                if s.status == "active" and s.end_date >= get_today_mx()),
+            None
+        )
+        member_dict = MemberResponseWithSubscription.model_validate(member)
+        if active_sub:
+            days_remaining = (active_sub.end_date - get_today_mx()).days
+            member_dict.active_subscription = ActiveSubscriptionInfo(
+                status="active",
+                end_date=active_sub.end_date,
+                plan_name=active_sub.plan.name if active_sub.plan else None,
+                days_remaining=days_remaining
+            )
+        members_data.append(member_dict.model_dump())
+
     return {
-        "members": members,
+        "members": members_data,
         "total": total,
         "skip": skip,
         "limit": limit

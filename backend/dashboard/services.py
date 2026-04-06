@@ -19,6 +19,12 @@ from .schemas import (
     PlanBasicInfo
 )
 
+from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
+
+def get_today():
+    return datetime.now(ZoneInfo("America/Mexico_City")).date()
+
 SPANISH_DAYS = {
     0: "Lunes",
     1: "Martes",
@@ -31,7 +37,7 @@ SPANISH_DAYS = {
 
 def get_dashboard_metrics(db: Session) -> DashboardMetrics:
     """Get main dashboard metrics"""
-    today = date.today()
+    today = get_today()
     
     current_in_gym = db.query(Attendance).filter(
         and_(
@@ -60,7 +66,7 @@ def get_dashboard_metrics(db: Session) -> DashboardMetrics:
 
 def get_expiring_subscriptions(db: Session, days: int = 7) -> List[ExpiringSubscription]:
     """Get subscriptions expiring in the next X days"""
-    today = date.today()
+    today = get_today()
     end_date = today + timedelta(days=days)
     
     subscriptions = db.query(Subscription).join(
@@ -98,7 +104,7 @@ def get_expiring_subscriptions(db: Session, days: int = 7) -> List[ExpiringSubsc
 
 def get_recent_checkins(db: Session, limit: int = 15) -> List[RecentCheckIn]:
     """Get recent check-ins with member info"""
-    today = date.today()
+    today = get_today()
     
     checkins = db.query(Attendance).join(
         Member, Attendance.member_id == Member.id
@@ -132,7 +138,7 @@ def get_recent_checkins(db: Session, limit: int = 15) -> List[RecentCheckIn]:
 
 def get_weekly_attendance_stats(db: Session, days: int = 7) -> List[DailyAttendanceStats]:
     """Get attendance statistics for the last X days"""
-    today = date.today()
+    today = get_today()
     start_date = today - timedelta(days=days - 1)
     
     # Query attendance grouped by date
@@ -165,7 +171,7 @@ def get_payment_metrics(db: Session) -> PaymentMetrics:  # ← Cambiar de dict a
     from payments.models import PaymentRecord
     from decimal import Decimal
     
-    today = date.today()
+    today = get_today()
     month_start = today.replace(day=1)
     
     # Ingresos de hoy
@@ -221,7 +227,7 @@ def get_weekly_income_stats(db: Session, days: int = 7) -> List[DailyIncomeStats
     """Get income statistics for the last X days"""
     from payments.models import PaymentRecord
     
-    today = date.today()
+    today = get_today()
     start_date = today - timedelta(days=days - 1)
     
     # Query payments grouped by date
@@ -263,7 +269,7 @@ def get_plan_metrics(db: Session) -> List[dict]:
         and_(
             Subscription.plan_id == Plan.id,
             Subscription.status == "active",
-            Subscription.end_date >= date.today()
+            Subscription.end_date >= get_today()
         )
     ).group_by(Plan.id, Plan.name).order_by(func.count(Subscription.id).desc()).all()
     

@@ -32,9 +32,9 @@ export default function MemberQRModal({ member, onClose }) {
         if (!member.phone || !qrData) return;
         const phone = member.phone.replace(/\D/g, '');
         const fullPhone = phone.startsWith('52') ? phone : `52${phone}`;
-        const message = `Hola ${member.first_name} 👋\n\n`
+        const message = `Hola ${member.first_name}\n\n`
             + `Tu código de acceso a *Fuerza Fit* está listo.\n\n`
-            + `📱 Muestra este enlace al staff cuando llegues:\n`
+            + `Muestra este enlace al staff cuando llegues:\n`
             + `${qrData.qr_url}\n\n`
             + `_Guarda este mensaje para tenerlo siempre a la mano._`;
         window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank');

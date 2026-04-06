@@ -1,7 +1,8 @@
-// frontend/src/pages/Reports.jsx
 import { useState, useEffect } from 'react';
 import { TrendingUp, Users, DollarSign, Calendar, Activity, Award, Database } from 'lucide-react';
 import { reportsService } from '../services/reportsService';
+import { memberService } from '../services/memberService';
+import MemberDetailModal from '../components/MemberDetailModal';
 import api from '../services/api';
 
 function Reports() {
@@ -67,6 +68,21 @@ function Reports() {
         });
     };
 
+    const [selectedMember, setSelectedMember] = useState(null);
+    const [loadingMember, setLoadingMember] = useState(false);
+
+    const handleViewMember = async (memberId) => {
+        setLoadingMember(true);
+        try {
+            const member = await memberService.getMember(memberId);
+            setSelectedMember(member);
+        } catch (error) {
+            console.error('Error loading member:', error);
+        } finally {
+            setLoadingMember(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -84,7 +100,6 @@ function Reports() {
 
     return (
         <div className="space-y-6 bg-primary-50 min-h-screen">
-            {/* Header con botón de backup */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-text-primary">Reportes y Análisis</h1>
@@ -104,7 +119,7 @@ function Reports() {
                         <option value="year">Último Año</option>
                     </select>
                     
-                    {/* Botón de respaldo */}
+                    {/* BBackup bottom */}
                     <button
                         onClick={handleBackup}
                         disabled={backupLoading}
@@ -270,7 +285,8 @@ function Reports() {
                             {data.attendance.top_members.map((member, index) => (
                                 <div
                                     key={member.id}
-                                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:border-primary-300 transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); handleViewMember(member.id); }}
+                                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
@@ -294,6 +310,14 @@ function Reports() {
                                         </div>
                                         <div className="text-xs text-text-secondary">visitas</div>
                                     </div>
+                                    {selectedMember && (
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <MemberDetailModal
+                                                member={selectedMember}
+                                                onClose={() => setSelectedMember(null)}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -302,7 +326,7 @@ function Reports() {
                     )}
                 </div>
             </div>
-        </div>
+        </div>        
     );
 }
 

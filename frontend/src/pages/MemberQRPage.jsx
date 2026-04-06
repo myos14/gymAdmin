@@ -11,6 +11,7 @@ export default function MemberQRPage() {
                 <h1 className="text-3xl font-black text-white tracking-tight">FUERZA FIT</h1>
                 <p className="text-blue-200 mt-1 text-sm">Código de acceso</p>
             </div>
+
             <div className="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center w-full max-w-xs">
                 <p className="text-xs text-gray-500 mb-4 text-center">
                     Muestra este código al staff cuando llegues
@@ -23,8 +24,28 @@ export default function MemberQRPage() {
                 </p>
             </div>
             <p className="mt-8 text-blue-200 text-xs text-center">
-                Guarda este enlace en tus favoritos
+                Guarda este enlace o toma captura de pantalla
             </p>
+            
+            <div className="mt-6 bg-white bg-opacity-10 rounded-xl p-4 w-full max-w-xs">
+                <p className="text-white text-xs font-semibold text-center mb-3 uppercase tracking-wide">
+                    Horarios
+                </p>
+                <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                        <span className="text-blue-200">Lunes — Viernes</span>
+                        <span className="text-white font-medium">6:00 — 22:00</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                        <span className="text-blue-200">Sábado</span>
+                        <span className="text-white font-medium">8:00 — 15:00</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                        <span className="text-blue-200">Domingo</span>
+                        <span className="text-white font-medium">8:00 — 14:00</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

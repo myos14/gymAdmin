@@ -308,7 +308,7 @@ function SubscriptionModal({ onClose, onSuccess }) {
                             <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
                                 <Calendar className="h-5 w-5 text-gray-400" />
                                 <span className="text-gray-700">
-                                    {endDate ? {endDate} : 'Seleccione un plan'}
+                                    {endDate === 'permanent' ? 'Sin vencimiento' : endDate || 'Seleccione un plan'}
                                 </span>
                             </div>
                         </div>
@@ -379,7 +379,7 @@ function SubscriptionModal({ onClose, onSuccess }) {
                                 {endDate && (
                                     <div className="flex justify-between pt-2 border-t border-info-200">
                                         <span>Vence:</span>
-                                        <span className="font-semibold">{formatDate(endDate)}</span>
+                                        <span className="font-semibold">{endDate === 'permanent' ? 'Sin vencimiento' : endDate}</span>
                                     </div>
                                 )}
                             </div>

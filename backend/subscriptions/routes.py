@@ -46,7 +46,9 @@ def calculate_end_date(start_date: date, duration_days: int) -> date:
     elif duration_days == 365:
         return start_date + relativedelta(years=1)
     else:
-        # Custom days
+        # Visit and custom days
+        if duration_days == 1:
+            return start_date
         return start_date + timedelta(days=duration_days)
 
 def update_subscription_status(subscription: Subscription):

@@ -85,3 +85,4 @@ class DashboardSummary(BaseModel):
     weekly_stats: List[DailyAttendanceStats]
     weekly_income: List[DailyIncomeStats]
     plan_metrics: List[PlanMetric]
+    upcoming_birthdays: List[dict] = []

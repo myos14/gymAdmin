@@ -11,7 +11,8 @@ from .services import (
     get_recent_payments,
     get_weekly_attendance_stats,
     get_weekly_income_stats,
-    get_plan_metrics
+    get_plan_metrics,
+    get_upcoming_birthdays
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -41,5 +42,6 @@ def get_dashboard_summary(
         recent_payments=get_recent_payments(db, limit=recent_limit),
         weekly_stats=get_weekly_attendance_stats(db, days=stats_days),
         weekly_income=get_weekly_income_stats(db, days=stats_days),
-        plan_metrics=get_plan_metrics(db)
+        plan_metrics=get_plan_metrics(db),
+        upcoming_birthdays=get_upcoming_birthdays(db, days=5)
     )

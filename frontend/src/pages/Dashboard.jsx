@@ -3,10 +3,10 @@ import { Users, ClipboardCheck, UserCheck, CreditCard, DollarSign, AlertCircle }
 import { useLocation } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
 import ExpiringSubscriptions from '../components/dashboard/ExpiringSubscriptions';
+import UpcomingBirthdays from '../components/dashboard/UpcomingBirthdays';
 import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
-import PlanMetrics from '../components/dashboard/PlanMetrics';
 import StatsCard from '../components/dashboard/StatsCard';
 import api from '../services/api';
 
@@ -89,7 +89,7 @@ function Dashboard() {
                     color="bg-primary-500"
                 />
                 <StatsCard
-                    title="Suscripciones Activas"
+                    title="Subs Activas"
                     value={loading ? '...' : dashboardData?.metrics.active_subscriptions || 0}
                     icon={CreditCard}
                     color="bg-primary-800"
@@ -109,11 +109,7 @@ function Dashboard() {
             </div>
 
             {/* Alertas y Metricas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <PlanMetrics
-                    planMetrics={dashboardData?.plan_metrics || []}
-                    loading={loading}
-                />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 <ExpiringSubscriptions
                     subscriptions={dashboardData?.expiring_subscriptions || []}
                     loading={loading}
@@ -121,6 +117,10 @@ function Dashboard() {
                 />
                 <RecentPayments
                     payments={dashboardData?.recent_payments || []}
+                    loading={loading}
+                />
+                <UpcomingBirthdays
+                    birthdays={dashboardData?.upcoming_birthdays || []}
                     loading={loading}
                 />
             </div>

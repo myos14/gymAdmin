@@ -136,7 +136,7 @@ def get_recent_checkins(db: Session, limit: int = 15) -> List[RecentCheckIn]:
     
     return result
 
-def get_weekly_attendance_stats(db: Session, days: int = 7) -> List[DailyAttendanceStats]:
+def get_weekly_attendance_stats(db: Session, days: int = 5) -> List[DailyAttendanceStats]:
     """Get attendance statistics for the last X days"""
     today = get_today()
     start_date = today - timedelta(days=days - 1)
@@ -166,7 +166,7 @@ def get_weekly_attendance_stats(db: Session, days: int = 7) -> List[DailyAttenda
     
     return result
 
-def get_payment_metrics(db: Session) -> PaymentMetrics:  # ← Cambiar de dict a PaymentMetrics
+def get_payment_metrics(db: Session) -> PaymentMetrics:
     """Get payment metrics for dashboard"""
     from payments.models import PaymentRecord
     from decimal import Decimal
@@ -174,17 +174,14 @@ def get_payment_metrics(db: Session) -> PaymentMetrics:  # ← Cambiar de dict a
     today = get_today()
     month_start = today.replace(day=1)
     
-    # Ingresos de hoy
     today_payments = db.query(func.sum(PaymentRecord.amount)).filter(
         PaymentRecord.payment_date == today
     ).scalar() or Decimal("0.00")
     
-    # Ingresos del mes
     month_payments = db.query(func.sum(PaymentRecord.amount)).filter(
         PaymentRecord.payment_date >= month_start
     ).scalar() or Decimal("0.00")
     
-    # Pagos pendientes (suscripciones con deuda)
     pending_subs = db.query(Subscription).join(Plan).filter(
         and_(
             Subscription.status == "active",
@@ -197,13 +194,13 @@ def get_payment_metrics(db: Session) -> PaymentMetrics:  # ← Cambiar de dict a
         for sub in pending_subs
     )
     
-    return PaymentMetrics(  # ← Regresar PaymentMetrics en lugar de dict
+    return PaymentMetrics(
         today_income=float(today_payments),
         month_income=float(month_payments),
         pending_payments=pending_amount
     )
 
-def get_recent_payments(db: Session, limit: int = 5) -> List[RecentPayment]:  # ← Cambiar tipo de retorno
+def get_recent_payments(db: Session, limit: int = 5) -> List[RecentPayment]:
     """Get recent payments for dashboard"""
     from payments.models import PaymentRecord
     
@@ -213,7 +210,7 @@ def get_recent_payments(db: Session, limit: int = 5) -> List[RecentPayment]:  # 
     
     result = []
     for p in payments:
-        result.append(RecentPayment(  # ← Usar RecentPayment en lugar de dict
+        result.append(RecentPayment(
             id=p.id,
             member_name=f"{p.member.first_name} {p.member.last_name_paternal}",
             amount=float(p.amount),
@@ -223,7 +220,7 @@ def get_recent_payments(db: Session, limit: int = 5) -> List[RecentPayment]:  # 
     
     return result
 
-def get_weekly_income_stats(db: Session, days: int = 7) -> List[DailyIncomeStats]:  # ← Cambiar tipo de retorno
+def get_weekly_income_stats(db: Session, days: int = 7) -> List[DailyIncomeStats]:
     """Get income statistics for the last X days"""
     from payments.models import PaymentRecord
     
@@ -247,7 +244,7 @@ def get_weekly_income_stats(db: Session, days: int = 7) -> List[DailyIncomeStats
         current_date = start_date + timedelta(days=i)
         day_name = SPANISH_DAYS[current_date.weekday()]
         
-        result.append(DailyIncomeStats(  # ← Usar DailyIncomeStats en lugar de dict
+        result.append(DailyIncomeStats(
             date=current_date.isoformat(),
             total_income=stats_dict.get(current_date, 0.0),
             day_name=day_name
@@ -278,3 +275,39 @@ def get_plan_metrics(db: Session) -> List[dict]:
         'plan_name': stat.name,
         'active_subscriptions': stat.active_count
     } for stat in plan_stats]
+
+def get_upcoming_birthdays(db: Session, days: int = 5) -> List[dict]:
+    """Get members with birthdays in the next X days"""
+    from members.models import Member
+    
+    today = get_today()
+    members = db.query(Member).filter(Member.is_active == True, Member.date_of_birth != None).all()
+    
+    upcoming = []
+    for member in members:
+        birth = member.date_of_birth
+        try:
+            birthday_this_year = birth.replace(year=today.year)
+        except ValueError:
+            birthday_this_year = birth.replace(year=today.year, day=28)
+        
+        if birthday_this_year < today:
+            try:
+                birthday_this_year = birth.replace(year=today.year + 1)
+            except ValueError:
+                birthday_this_year = birth.replace(year=today.year + 1, day=28)
+        
+        days_until = (birthday_this_year - today).days
+        
+        if 0 <= days_until <= days:
+            upcoming.append({
+                "id": member.id,
+                "full_name": f"{member.first_name} {member.last_name_paternal}",
+                "phone": member.phone,
+                "birth_date": birth.isoformat(),
+                "birthday_date": birthday_this_year.isoformat(),
+                "days_until": days_until,
+                "age_turning": today.year - birth.year if birthday_this_year.year == today.year else today.year - birth.year + 1
+            })
+    
+    return sorted(upcoming, key=lambda x: x["days_until"])

@@ -1,18 +1,6 @@
+import InfoCard from '../../components/common/InfoCard';
+
 const RecentPayments = ({ payments, loading }) => {
-    if (loading) {
-        return (
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-primary mb-4">
-                    Pagos Recientes
-                </h2>
-                <div className="animate-pulse space-y-3">
-                    {[1, 2, 3].map(i => (
-                        <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
 
     const getMethodColor = (method) => {
         const colors = {
@@ -48,27 +36,27 @@ const RecentPayments = ({ payments, loading }) => {
             month: 'short'
         });
     };
-
     return (
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-primary">
-                    Pagos Recientes
-                </h2>
-            </div>
-
-            {payments.length === 0 ? (
+        <InfoCard title="Pagos recientes">
+            
+            {loading ? (
+                <div className="animate-pulse space-y-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                    ))}
+                </div>
+            ) : payments.length === 0 ? (
                 <div className="text-center py-8">
-                    <p className="text-secondary">
+                    <p className="text-gray-500">
                         No hay pagos registrados
                     </p>
                 </div>
             ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto">
                     {payments.map((payment) => (
                         <div
-                        key={payment.id}
-                        className="flex items-center justify-between p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
+                            key={payment.id}
+                            className="flex items-center justify-between p-3 rounded-md bg-gray-50 hover:bg-blue-50 transition-colors"
                         >
                             <div className="flex-1">
                                 <p className="font-medium text-sm">
@@ -78,7 +66,7 @@ const RecentPayments = ({ payments, loading }) => {
                                     <span className={`text-xs px-2 py-0.5 rounded ${getMethodColor(payment.payment_method)}`}>
                                         {getMethodLabel(payment.payment_method)}
                                     </span>
-                                    <span className="text-xs text-muted">
+                                    <span className="text-xs text-gray-400">
                                         {formatDate(payment.payment_date)}
                                     </span>
                                 </div>
@@ -92,7 +80,7 @@ const RecentPayments = ({ payments, loading }) => {
                     ))}
                 </div>
             )}
-        </div>
+        </InfoCard>
     );
 };
 

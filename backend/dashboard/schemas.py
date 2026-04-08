@@ -93,3 +93,4 @@ class DashboardSummary(BaseModel):
     weekly_income: List[DailyIncomeStats]
     plan_metrics: List[PlanMetric]
     upcoming_birthdays: List[dict] = []
+    gender_stats: GenderStats = GenderStats(masculino=0, femenino=0, sin_dato=0, total=0)

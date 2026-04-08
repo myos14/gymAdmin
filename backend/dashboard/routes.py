@@ -44,5 +44,6 @@ def get_dashboard_summary(
         weekly_stats=get_weekly_attendance_stats(db, days=stats_days),
         weekly_income=get_weekly_income_stats(db, days=stats_days),
         plan_metrics=get_plan_metrics(db),
-        upcoming_birthdays=get_upcoming_birthdays(db, days=5)
+        upcoming_birthdays=get_upcoming_birthdays(db, days=5),
+        gender_stats=get_gender_stats(db)
     )

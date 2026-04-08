@@ -10,6 +10,7 @@ class MemberBase(BaseModel):
     phone: Optional[str] = Field(None, max_length=15)
     email: Optional[EmailStr] = None
     date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
     emergency_contact: Optional[str] = Field(None, max_length=100)
     emergency_phone: Optional[str] = Field(None, max_length=15)
     
@@ -58,6 +59,7 @@ class MemberUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=15)
     email: Optional[EmailStr] = None
     date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
     emergency_contact: Optional[str] = Field(None, max_length=100)
     emergency_phone: Optional[str] = Field(None, max_length=15)
     is_active: Optional[bool] = None
@@ -102,6 +104,7 @@ class MemberResponse(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
     emergency_contact: Optional[str] = None
     emergency_phone: Optional[str] = None
     registration_date: date

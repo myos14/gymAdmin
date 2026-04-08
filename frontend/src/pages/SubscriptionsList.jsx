@@ -3,6 +3,7 @@ import { Plus, Search, Calendar, AlertCircle, CheckCircle, XCircle, CreditCard, 
 import { subscriptionService } from '../services/subscriptionService';
 import SubscriptionModal from '../components/SubscriptionModal';
 import RenewSubscriptionModal from '../components/dashboard/RenewSubscriptionModal';
+import SubscriptionDetailModal from '../components/SubscriptionDetailModal';
 
 function SubscriptionsList() {
     const [subscriptions, setSubscriptions] = useState([]);
@@ -12,6 +13,7 @@ function SubscriptionsList() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [notification, setNotification] = useState(null);
     const [renewingSubscription, setRenewingSubscription] = useState(null);
+    const [selectedSubscription, setSelectedSubscription] = useState(null);
     
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
@@ -382,10 +384,26 @@ function SubscriptionsList() {
                                                         {getStatusBadge(subscription.status)}
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                                                        {formatPrice(subscription.plan_price || subscription.plan?.price)}
+                                                        <div>{formatPrice(subscription.amount_paid)}</div>
+                                                        {subscription.payment_status === 'partial' && (
+                                                            <div className="text-xs text-orange-600 font-medium">
+                                                                Adeudo: {formatPrice((subscription.plan_price || subscription.plan?.price) - subscription.amount_paid)}
+                                                            </div>
+                                                        )}
+                                                        {subscription.payment_status === 'pending' && (
+                                                            <div className="text-xs text-red-600 font-medium">
+                                                                Pendiente: {formatPrice(subscription.plan_price || subscription.plan?.price)}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                        <div className="grid grid-cols-2 gap-2 min-w-[140px] text-right">
+                                                        <div className="grid grid-cols-3 gap-2 min-w-[200px] text-right">
+                                                            <button
+                                                                onClick={() => setSelectedSubscription(subscription)}
+                                                                className="px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                                                            >
+                                                                Ver
+                                                            </button>
                                                             {(subscription.status === 'active' || subscription.status === 'expired') ? (
                                                                 <button 
                                                                 onClick={() => setRenewingSubscription(subscription)}
@@ -479,6 +497,13 @@ function SubscriptionsList() {
                 <SubscriptionModal
                     onClose={handleModalClose}
                     onSuccess={showNotification}
+                />
+            )}
+
+            {selectedSubscription && (
+                <SubscriptionDetailModal
+                    subscription={selectedSubscription}
+                    onClose={() => setSelectedSubscription(null)}
                 />
             )}
 

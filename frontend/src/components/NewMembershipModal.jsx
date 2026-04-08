@@ -16,6 +16,7 @@ function NewMembershipModal({ onClose, onSuccess }) {
         last_name_maternal: '',
         phone: '',
         date_of_birth: '',
+        gender: '',
         emergency_contact: '',
         emergency_phone: '',
         plan_id: '',
@@ -134,6 +135,7 @@ function NewMembershipModal({ onClose, onSuccess }) {
                 phone: formData.phone.trim() || null,
                 email: null,
                 date_of_birth: formData.date_of_birth || null,
+                gender: formData.gender || null,
                 emergency_contact: formData.emergency_contact.trim() || null,
                 emergency_phone: formData.emergency_phone.trim() || null
             };
@@ -151,14 +153,10 @@ function NewMembershipModal({ onClose, onSuccess }) {
             };
 
             await subscriptionService.createSubscription(subscriptionData);
-
-            // ← CRÍTICO: Llamar onSuccess PRIMERO
             onSuccess(
                 `Membresía registrada: ${newMember.first_name} ${newMember.last_name_paternal}`,
                 'success'
             );
-            
-            // ← CRÍTICO: Cerrar modal DESPUÉS
             onClose(true);
             
         } catch (error) {
@@ -212,7 +210,11 @@ function NewMembershipModal({ onClose, onSuccess }) {
             end.setFullYear(end.getFullYear() + 1);
         } else {
             // VCustom days
-            end.setDate(end.getDate() + days);
+            if (days === 1) {
+                
+            } else {
+                end.setDate(end.getDate() + days - 1);
+            }
         }
         
         return end.toLocaleDateString('es-MX', { 
@@ -319,6 +321,20 @@ function NewMembershipModal({ onClose, onSuccess }) {
                                             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
+                                    <select
+                                        name="gender"
+                                        value={formData.gender}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    >
+                                        <option value="">Sin especificar</option>
+                                        <option value="masculino">Masculino</option>
+                                        <option value="femenino">Femenino</option>
+                                    </select>
                                 </div>
 
                                 <div>

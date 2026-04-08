@@ -158,6 +158,30 @@ def get_recent_checkins(db: Session, limit: int = 15) -> List[RecentCheckIn]:
     
     return result
 
+def get_gender_stats(db: Session) -> dict:
+    from sqlalchemy import func
+    
+    total = db.query(Member).filter(Member.is_active == True).count()
+    
+    masculino = db.query(Member).filter(
+        Member.is_active == True,
+        Member.gender == 'masculino'
+    ).count()
+    
+    femenino = db.query(Member).filter(
+        Member.is_active == True,
+        Member.gender == 'femenino'
+    ).count()
+    
+    sin_dato = total - masculino - femenino
+    
+    return {
+        "masculino": masculino,
+        "femenino": femenino,
+        "sin_dato": sin_dato,
+        "total": total
+    }
+
 def get_weekly_attendance_stats(db: Session, days: int = 5) -> List[DailyAttendanceStats]:
     """Get attendance statistics for the last X days"""
     today = get_today()

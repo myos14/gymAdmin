@@ -13,6 +13,7 @@ class Member(Base):
     phone = Column(String(20), nullable=True)
     email = Column(String(100), nullable=True, unique=True)
     date_of_birth = Column(Date, nullable=True)
+    gender = Column(String(10), nullable=True)  # 'masculino' | 'femenino'
     emergency_contact = Column(String(100), nullable=True)
     emergency_phone = Column(String(20), nullable=True)
     registration_date = Column(Date, nullable=False)

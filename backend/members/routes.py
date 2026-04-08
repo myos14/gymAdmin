@@ -110,6 +110,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         phone=member.phone,
         email=member.email.lower() if member.email else None,
         date_of_birth=member.date_of_birth,
+        gender=member.gender,
         emergency_contact=capitalize_name(member.emergency_contact) if member.emergency_contact else None,
         emergency_phone=member.emergency_phone,
         registration_date=date.today(),

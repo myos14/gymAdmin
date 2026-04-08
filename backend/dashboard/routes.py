@@ -12,7 +12,8 @@ from .services import (
     get_weekly_attendance_stats,
     get_weekly_income_stats,
     get_plan_metrics,
-    get_upcoming_birthdays
+    get_upcoming_birthdays,
+    get_gender_stats
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])

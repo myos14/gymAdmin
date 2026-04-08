@@ -11,6 +11,7 @@ function MemberModal({member, onClose, onSuccess}) {
         email: '',
         phone: '',
         date_of_birth: '',
+        gender: '',
         emergency_contact: '',
         emergency_phone: '',
     })
@@ -26,6 +27,7 @@ function MemberModal({member, onClose, onSuccess}) {
                 email: member.email || '',
                 phone: member.phone || '',
                 date_of_birth: member.date_of_birth || '',
+                gender: member.gender || '',
                 emergency_contact: member.emergency_contact || '',
                 emergency_phone: member.emergency_phone || '',
             })
@@ -254,6 +256,21 @@ function MemberModal({member, onClose, onSuccess}) {
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                             />
+                        </div>
+
+                        {/* Gender */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Sexo</label>
+                            <select
+                                name="gender"
+                                value={formData.gender}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            >
+                                <option value="">Sin especificar</option>
+                                <option value="masculino">Masculino</option>
+                                <option value="femenino">Femenino</option>
+                            </select>
                         </div>
 
                         {/* Emergency contact */}

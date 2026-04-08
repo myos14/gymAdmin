@@ -7,6 +7,7 @@ import UpcomingBirthdays from '../components/dashboard/UpcomingBirthdays';
 import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
+import GenderChart from '../components/dashboard/GenderChart';
 import api from '../services/api';
 
 /* ========================= SmartStatCard ========================= */
@@ -191,7 +192,7 @@ function Dashboard() {
                     <WeeklyChart data={dashboardData?.weekly_stats || []} loading={loading} />
                     <IncomeChart data={dashboardData?.weekly_income || []} loading={loading} />
                 </div>
-                <DayPerformance loading={loading} />
+                <GenderChart data={dashboardData?.gender_stats} loading={loading} />
             </div>
 
             {/* ── Fila 3: Alertas ── */}

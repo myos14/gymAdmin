@@ -77,6 +77,12 @@ class PlanMetric(BaseModel):
     plan_name: str
     active_subscriptions: int
 
+class GenderStats(BaseModel):
+    masculino: int
+    femenino: int
+    sin_dato: int
+    total: int
+
 class DashboardSummary(BaseModel):
     metrics: DashboardMetrics
     payment_metrics: PaymentMetrics 

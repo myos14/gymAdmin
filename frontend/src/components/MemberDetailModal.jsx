@@ -118,6 +118,12 @@ function MemberDetailModal({ member, onClose }) {
                                     {member.phone || 'No registrado'}
                                 </p>
                             </div>
+                            {member.gender && (
+                                <div>
+                                    <p className="text-sm text-text-secondary">Sexo</p>
+                                    <p className="font-medium text-text-primary capitalize">{member.gender}</p>
+                                </div>
+                            )}
                             {member.date_of_birth && (
                                 <div>
                                     <p className="text-sm text-text-secondary">Fecha de Nacimiento</p>

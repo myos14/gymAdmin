@@ -108,18 +108,25 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     
     payment_method_db = method_map.get(subscription.payment_method, 'efectivo')
     
-    db_payment = PaymentRecord(
-        subscription_id=db_subscription.id,
-        member_id=subscription.member_id,
-        amount=Decimal(str(payment_amount)),
-        payment_date=subscription.start_date,
-        payment_method=payment_method_db,
-        notes=subscription.notes or f"Pago automático al crear suscripción {plan.name}"
-    )
-    
-    db.add(db_payment)
-    db_subscription.amount_paid = payment_amount
-    db_subscription.payment_status = "paid"
+    if subscription.amount_paid > 0:
+        db_payment = PaymentRecord(
+            subscription_id=db_subscription.id,
+            member_id=subscription.member_id,
+            amount=Decimal(str(subscription.amount_paid)),
+            payment_date=subscription.start_date,
+            payment_method=payment_method_db,
+            notes=subscription.notes or f"Pago al crear suscripción {plan.name}"
+        )
+        db.add(db_payment)
+
+    db_subscription.amount_paid = subscription.amount_paid
+
+    if subscription.amount_paid <= 0:
+        db_subscription.payment_status = "pending"
+    elif float(subscription.amount_paid) < float(plan.price):
+        db_subscription.payment_status = "partial"
+    else:
+        db_subscription.payment_status = "paid"
     
     db.commit()
     db.refresh(db_subscription)

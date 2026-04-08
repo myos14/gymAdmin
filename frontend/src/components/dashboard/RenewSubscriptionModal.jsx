@@ -62,14 +62,25 @@ function RenewSubscriptionModal({ subscription, onClose, onSuccess }) {
 
     const calculateEndDate = () => {
         const plan = plans.find(p => p.id === parseInt(formData.plan_id));
-        if (!plan) return;
+        if (!plan || !formData.start_date) return;
 
         setSelectedPlan(plan);
-        
-        const start = new Date(formData.start_date);
-        const end = new Date(start);
-        end.setDate(end.getDate() + plan.duration_days);
-        
+
+        const start = new Date(formData.start_date + 'T00:00:00');
+        const days = plan.duration_days;
+        let end = new Date(start);
+
+        if (days === 0 || days > 36500) {
+            setEndDate(null);
+            return;
+        } else if (days === 30)  { end.setMonth(end.getMonth() + 1); }
+        else if (days === 60)    { end.setMonth(end.getMonth() + 2); }
+        else if (days === 90)    { end.setMonth(end.getMonth() + 3); }
+        else if (days === 180)   { end.setMonth(end.getMonth() + 6); }
+        else if (days === 365)   { end.setFullYear(end.getFullYear() + 1); }
+        else if (days === 1)     { /* same day */ }
+        else                     { end.setDate(end.getDate() + days - 1); }
+
         setEndDate(end.toISOString().split('T')[0]);
     };
 

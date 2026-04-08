@@ -40,10 +40,7 @@ def get_dashboard_metrics(db: Session) -> DashboardMetrics:
     yesterday = today - timedelta(days=1)
 
     current_in_gym = db.query(Attendance).filter(
-        and_(
-            Attendance.date == today,
-            Attendance.check_out_time.is_(None)
-        )
+        Attendance.check_out_time.is_(None)
     ).count()
 
     today_visits = db.query(Attendance).filter(
@@ -98,7 +95,7 @@ def get_expiring_subscriptions(db: Session, days: int = 7) -> List[ExpiringSubsc
     ).filter(
         and_(
             Subscription.status == "active",
-            Subscription.end_date >= today,
+            Subscription.end_date > today,
             Subscription.end_date <= end_date
         )
     ).order_by(Subscription.end_date.asc()).all()

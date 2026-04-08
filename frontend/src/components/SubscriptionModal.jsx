@@ -94,7 +94,11 @@ function SubscriptionModal({ onClose, onSuccess }) {
         } else if (days === 365) {
             end.setFullYear(end.getFullYear() + 1);
         } else {
-            end.setDate(end.getDate() + days);
+            if (days === 1) {
+                
+            } else {
+                end.setDate(end.getDate() + days - 1);
+            }
         }
 
         setEndDate(end.toLocaleDateString('es-MX', { 

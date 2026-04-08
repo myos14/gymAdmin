@@ -1,6 +1,12 @@
 import { X, Calendar, CreditCard, User, FileText, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { subscriptionService } from '../services/subscriptionService';
 
 function SubscriptionDetailModal({ subscription, onClose }) {
+    const [paying, setPaying] = useState(false);
+    const [payAmount, setPayAmount] = useState('');
+    const [payError, setPayError] = useState('');
+
     const formatDate = (dateString) => {
         return new Date(dateString + 'T00:00:00').toLocaleDateString('es-MX', {
             year: 'numeric', month: 'long', day: 'numeric'
@@ -128,8 +134,8 @@ function SubscriptionDetailModal({ subscription, onClose }) {
                                 <span className="text-gray-600">Duración</span>
                                 <span className="font-medium text-gray-900">
                                     {subscription.plan?.duration_days === 1 ? '1 visita' :
-                                     subscription.plan?.duration_days >= 36500 ? 'Permanente' :
-                                     `${subscription.plan?.duration_days} días`}
+                                        subscription.plan?.duration_days >= 36500 ? 'Permanente' :
+                                    `${subscription.plan?.duration_days} días`}
                                 </span>
                             </div>
                         </div>
@@ -159,6 +165,44 @@ function SubscriptionDetailModal({ subscription, onClose }) {
                                 <div className="flex justify-between pt-2 border-t border-green-200">
                                     <span className="text-green-700 font-medium">Saldo</span>
                                     <span className="font-bold text-green-700">Liquidado ✓</span>
+                                </div>
+                            )}
+                            {adeudo > 0 && (
+                                <div className="pt-3 border-t border-gray-200 space-y-2">
+                                    <p className="text-sm font-medium text-gray-700">Registrar abono</p>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            value={payAmount}
+                                            onChange={e => { setPayAmount(e.target.value); setPayError(''); }}
+                                            placeholder="Monto"
+                                            min="0.01"
+                                            step="0.01"
+                                            max={adeudo}
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        />
+                                        <button
+                                            onClick={async () => {
+                                                const amount = parseFloat(payAmount);
+                                                if (!amount || amount <= 0) { setPayError('Ingresa un monto válido'); return; }
+                                                if (amount > adeudo) { setPayError(`Máximo ${formatPrice(adeudo)}`); return; }
+                                                setPaying(true);
+                                                try {
+                                                    await subscriptionService.registerPayment(subscription.id, { amount, payment_method: 'efectivo' });
+                                                    onClose(true);
+                                                } catch {
+                                                    setPayError('Error al registrar pago');
+                                                } finally {
+                                                    setPaying(false);
+                                                }
+                                            }}
+                                            disabled={paying}
+                                            className="px-3 py-2 bg-blue-600/80 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                        >
+                                            {paying ? '...' : 'Abonar'}
+                                        </button>
+                                    </div>
+                                    {payError && <p className="text-red-500 text-xs">{payError}</p>}
                                 </div>
                             )}
                         </div>

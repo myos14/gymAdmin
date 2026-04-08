@@ -46,5 +46,10 @@ export const subscriptionService = {
     renewSubscription: async (id, data) => {
         const response = await api.post(`/subscriptions/${id}/renew`, data);
         return response.data;
-    }
+    },
+
+    registerPayment: async (subscriptionId, data) => {
+        const response = await api.post(`/subscriptions/${subscriptionId}/pay`, data);
+        return response.data;
+    },
 };

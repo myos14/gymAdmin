@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from typing import List, Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from pydantic import BaseModel
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from database import get_db
 from subscriptions.models import Subscription
@@ -15,8 +16,7 @@ from subscriptions.schemas import SubscriptionCreate, SubscriptionUpdate, Subscr
 from users.auth import get_current_active_user, require_admin
 from users.models import User
 
-from datetime import date, timedelta, datetime
-from zoneinfo import ZoneInfo
+from dateutil.relativedelta import relativedelta
 
 def get_today():
     return datetime.now(ZoneInfo("America/Mexico_City")).date()
@@ -28,9 +28,12 @@ class SubscriptionRenew(BaseModel):
     amount_paid: Optional[float] = 0.0
     notes: Optional[str] = None
 
-router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+class PaymentUpdate(BaseModel):
+    amount: float
+    payment_method: Optional[str] = "efectivo"
+    notes: Optional[str] = None
 
-from dateutil.relativedelta import relativedelta
+router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 def calculate_end_date(start_date: date, duration_days: int) -> date:
     if duration_days == 0:
@@ -46,13 +49,11 @@ def calculate_end_date(start_date: date, duration_days: int) -> date:
     elif duration_days == 365:
         return start_date + relativedelta(years=1)
     else:
-        # Visit and custom days
         if duration_days == 1:
             return start_date
         return start_date + timedelta(days=duration_days)
 
 def update_subscription_status(subscription: Subscription):
-    """Update subscription status if expired"""
     if subscription.end_date < get_today() and subscription.status == "active":
         subscription.status = "expired"
 
@@ -76,7 +77,7 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     
     if active_sub:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"El miembro ya tiene una suscripción activa que vence el {active_sub.end_date}"
         )
     
@@ -97,15 +98,12 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     db.add(db_subscription)
     db.flush()
     
-    payment_amount = subscription.amount_paid if subscription.amount_paid > 0 else plan.price
-    
     method_map = {
         'cash': 'efectivo',
         'card': 'tarjeta',
         'transfer': 'transferencia',
         'other': 'otro'
     }
-    
     payment_method_db = method_map.get(subscription.payment_method, 'efectivo')
     
     if subscription.amount_paid > 0:
@@ -130,8 +128,8 @@ def create_subscription(subscription: SubscriptionCreate, db: Session = Depends(
     
     db.commit()
     db.refresh(db_subscription)
-    
     return db_subscription
+
 
 @router.post("/{subscription_id}/renew", response_model=SubscriptionResponse)
 def renew_subscription(
@@ -140,14 +138,11 @@ def renew_subscription(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Renovar suscripción (requiere autenticación)"""
     old_subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
-    
     if not old_subscription:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
     
     plan_id = renew_data.plan_id if renew_data.plan_id else old_subscription.plan_id
-    
     plan = db.query(Plan).filter(Plan.id == plan_id).first()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan no encontrado")
@@ -184,36 +179,77 @@ def renew_subscription(
         start_date=new_start_date,
         end_date=new_end_date,
         status="active",
-        payment_status=renew_data.payment_status or "pending",
-        amount_paid=renew_data.amount_paid or 0.0,
+        payment_status="pending",
+        amount_paid=0.0,
         notes=renew_data.notes
     )
     
     old_subscription.status = "expired"
-    
     db.add(new_subscription)
     db.flush()
-    
-    payment_amount = renew_data.amount_paid if renew_data.amount_paid and renew_data.amount_paid > 0 else plan.price
-    
-    db_payment = PaymentRecord(
-        subscription_id=new_subscription.id,
-        member_id=old_subscription.member_id,
-        amount=Decimal(str(payment_amount)),
-        payment_date=new_start_date,
-        payment_method="efectivo",
-        notes=f"Pago automático al renovar suscripción {plan.name}"
-    )
-    
-    db.add(db_payment)
-    
-    new_subscription.amount_paid = payment_amount
-    new_subscription.payment_status = "paid"
+
+    new_subscription.amount_paid = renew_data.amount_paid or 0.0
+
+    if (renew_data.amount_paid or 0) <= 0:
+        new_subscription.payment_status = "pending"
+    elif float(renew_data.amount_paid) < float(plan.price):
+        new_subscription.payment_status = "partial"
+    else:
+        new_subscription.payment_status = "paid"
+
+    if (renew_data.amount_paid or 0) > 0:
+        db_payment = PaymentRecord(
+            subscription_id=new_subscription.id,
+            member_id=old_subscription.member_id,
+            amount=Decimal(str(renew_data.amount_paid)),
+            payment_date=new_start_date,
+            payment_method="efectivo",
+            notes=f"Pago al renovar suscripción {plan.name}"
+        )
+        db.add(db_payment)
     
     db.commit()
     db.refresh(new_subscription)
-    
     return new_subscription
+
+
+@router.post("/{subscription_id}/pay", response_model=SubscriptionResponse)
+def register_payment(
+    subscription_id: int,
+    payment_data: PaymentUpdate = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Registrar abono o pago completo de una suscripción"""
+    subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Suscripción no encontrada")
+
+    plan = db.query(Plan).filter(Plan.id == subscription.plan_id).first()
+
+    new_amount_paid = float(subscription.amount_paid or 0) + payment_data.amount
+    subscription.amount_paid = new_amount_paid
+
+    if new_amount_paid <= 0:
+        subscription.payment_status = "pending"
+    elif new_amount_paid < float(plan.price):
+        subscription.payment_status = "partial"
+    else:
+        subscription.payment_status = "paid"
+
+    db_payment = PaymentRecord(
+        subscription_id=subscription.id,
+        member_id=subscription.member_id,
+        amount=Decimal(str(payment_data.amount)),
+        payment_date=get_today(),
+        payment_method=payment_data.payment_method or "efectivo",
+        notes=payment_data.notes or f"Abono a suscripción {plan.name}"
+    )
+    db.add(db_payment)
+    db.commit()
+    db.refresh(subscription)
+    return subscription
+
 
 @router.get("/")
 def get_subscriptions(
@@ -224,7 +260,6 @@ def get_subscriptions(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    """Obtener lista de suscripciones con paginación"""
     query = db.query(Subscription).options(
         joinedload(Subscription.member),
         joinedload(Subscription.plan)
@@ -234,8 +269,6 @@ def get_subscriptions(
         query = query.filter(Subscription.status == status)
     if member_id:
         query = query.filter(Subscription.member_id == member_id)
-    
-    # ← BÚSQUEDA AGREGADA
     if search:
         search_pattern = f"%{search}%"
         query = query.join(Member).join(Plan).filter(
@@ -245,15 +278,12 @@ def get_subscriptions(
         )
     
     total = query.count()
-    
     subscriptions = query.order_by(Subscription.created_at.desc()).offset(skip).limit(limit).all()
     
     for sub in subscriptions:
         update_subscription_status(sub)
-    
     db.commit()
     
-    # ← SERIALIZACIÓN MANUAL PARA QUE FUNCIONE
     subscriptions_data = []
     for sub in subscriptions:
         subscriptions_data.append({
@@ -289,23 +319,21 @@ def get_subscriptions(
         "skip": skip,
         "limit": limit
     }
-    
+
+
 @router.get("/{subscription_id}", response_model=SubscriptionResponse)
 def get_subscription(
-    subscription_id: int, 
+    subscription_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Obtener suscripción por ID (requiere autenticación)"""
     subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
-    
     if not subscription:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
-    
     update_subscription_status(subscription)
     db.commit()
-    
     return subscription
+
 
 @router.put("/{subscription_id}", response_model=SubscriptionResponse)
 def update_subscription(
@@ -314,9 +342,7 @@ def update_subscription(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
-    """Actualizar suscripción (solo admin)"""
     db_subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
-    
     if not db_subscription:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
     
@@ -326,33 +352,29 @@ def update_subscription(
     
     db.commit()
     db.refresh(db_subscription)
-    
     return db_subscription
+
 
 @router.delete("/{subscription_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_subscription(
-    subscription_id: int, 
+    subscription_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
-    """Eliminar suscripción (solo admin)"""
     db_subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
-    
     if not db_subscription:
         raise HTTPException(status_code=404, detail="Suscripción no encontrada")
-    
     db.delete(db_subscription)
     db.commit()
-    
     return None
+
 
 @router.get("/member/{member_id}/active", response_model=Optional[SubscriptionResponse])
 def get_member_active_subscription(
-    member_id: int, 
+    member_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Obtener suscripción activa de un miembro (requiere autenticación)"""
     member = db.query(Member).filter(Member.id == member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado")

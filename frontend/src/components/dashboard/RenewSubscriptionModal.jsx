@@ -6,7 +6,7 @@ import { planService } from '../../services/planService';
 function RenewSubscriptionModal({ subscription, onClose, onSuccess }) {
     const [plans, setPlans] = useState([]);
     const [formData, setFormData] = useState({
-        plan_id: subscription.plan.id, // Pre-selecciona el plan actual
+        plan_id: subscription.plan.id,
         start_date: '',
         payment_status: 'pending',
         amount_paid: '0.00',
@@ -120,23 +120,20 @@ function RenewSubscriptionModal({ subscription, onClose, onSuccess }) {
             onSuccess('Suscripción renovada exitosamente', 'success');
             onClose(true);
         } catch (error) {
-            console.error('Full error:', error); // ← Ver error completo
+            console.error('Full error:', error);
             
-            // Manejar diferentes tipos de errores
             let errorMessage = 'Error al renovar suscripción';
             
             if (error.response?.data?.detail) {
             const detail = error.response.data.detail;
             
-            // Si detail es un array (errores de validación de Pydantic)
+            // Pydantic validation errors
             if (Array.isArray(detail)) {
                 errorMessage = detail.map(err => err.msg).join(', ');
             } 
-            // Si detail es un string
             else if (typeof detail === 'string') {
                 errorMessage = detail;
             }
-            // Si detail es un objeto
             else {
                 errorMessage = JSON.stringify(detail);
             }

@@ -7,19 +7,89 @@ import UpcomingBirthdays from '../components/dashboard/UpcomingBirthdays';
 import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
-import StatsCard from '../components/dashboard/StatsCard';
 import api from '../services/api';
 
+/* ========================= SmartStatCard ========================= */
+function SmartStatCard({ title, value, change, icon, color, loading }) {
+    const positive = change >= 0;
+    return (
+        <div className="bg-white p-5 rounded-xl shadow-sm border hover:shadow-md transition">
+            <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-500">{title}</span>
+                <div className={`p-2 rounded-lg ${color}`}>{icon}</div>
+            </div>
+            {loading ? (
+                <div className="animate-pulse h-8 w-20 bg-gray-200 rounded mt-1" />
+            ) : (
+                <div className="text-2xl font-bold text-gray-800">{value}</div>
+            )}
+            {!loading && change !== undefined && (
+                <div className={`text-sm mt-1 ${positive ? 'text-green-600' : 'text-red-500'}`}>
+                    {positive ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+                    <span className="text-gray-400 ml-1">vs ayer</span>
+                </div>
+            )}
+        </div>
+    );
+}
 
+/* ========================= DayPerformance ========================= */
+function DayPerformance({ loading }) {
+    const [stats, setStats] = useState(null);
+
+    useEffect(() => {
+        api.get('/attendance/stats/daily')
+            .then(r => setStats(r.data))
+            .catch(() => {});
+    }, []);
+
+    const rows = [
+        {
+            label: 'Visitas únicas hoy',
+            value: stats?.unique_members
+        },
+        {
+            label: 'Duración promedio',
+            value: stats?.average_duration_minutes
+                ? `${Math.floor(stats.average_duration_minutes / 60)}h ${stats.average_duration_minutes % 60}min`
+                : '—'
+        },
+        {
+            label: 'Visitas totales hoy',
+            value: stats?.total_visits
+        },
+    ];
+
+    return (
+        <div className="bg-white p-6 rounded-xl shadow h-full">
+            <h3 className="font-semibold mb-4 text-gray-700">Rendimiento del Día</h3>
+            {loading || !stats ? (
+                <div className="animate-pulse space-y-3">
+                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-200 rounded" />)}
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {rows.map(({ label, value }) => (
+                        <div key={label} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span className="text-sm text-gray-500">{label}</span>
+                            <span className="font-bold text-gray-800">{value ?? '—'}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ========================= Dashboard ========================= */
 function Dashboard() {
     const [dashboardData, setDashboardData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [loading, setLoading]             = useState(true);
+    const [error, setError]                 = useState(null);
     const location = useLocation();
 
     useEffect(() => {
-        api.post('/attendance/auto-checkout')
-            .catch(err => console.log('Auto-checkout:', err));
+        api.post('/attendance/auto-checkout').catch(() => {});
         loadDashboard();
     }, [location]);
 
@@ -33,27 +103,23 @@ function Dashboard() {
                 stats_days: 7
             });
             setDashboardData(data);
-        } catch (err) {
-            console.error('Error loading dashboard:', err);
+        } catch {
             setError('Error al cargar el dashboard');
         } finally {
             setLoading(false);
         }
     };
 
-    const formatPrice = (price) => {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            minimumFractionDigits: 0
+    const formatPrice = (price) =>
+        new Intl.NumberFormat('es-MX', {
+            style: 'currency', currency: 'MXN', minimumFractionDigits: 0
         }).format(price);
-    };
 
     if (error) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="text-center">
-                    <p className="text-error-600 mb-4">{error}</p>
+                    <p className="text-red-500 mb-4">{error}</p>
                     <button
                         onClick={loadDashboard}
                         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
@@ -65,51 +131,71 @@ function Dashboard() {
         );
     }
 
+    const m  = dashboardData?.metrics         || {};
+    const pm = dashboardData?.payment_metrics  || {};
+
     return (
-        <div className="p-12 space-y-6 bg-primary-50 min-h-screen">
-            {/* 6 Cards compactos */}
+        <div className="p-8 space-y-6 bg-primary-50 min-h-screen">
+
+            {/* ── Fila 1: KPIs ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                <StatsCard
-                    title="En el Gym Ahora"
-                    value={loading ? '...' : dashboardData?.metrics.current_in_gym || 0}
-                    icon={UserCheck}
+                <SmartStatCard
+                    title="En el Gym"
+                    value={m.current_in_gym ?? 0}
+                    loading={loading}
+                    icon={<UserCheck className="h-5 w-5 text-white" />}
                     color="bg-primary-700"
                 />
-                <StatsCard
+                <SmartStatCard
                     title="Asistencias Hoy"
-                    value={loading ? '...' : dashboardData?.metrics.today_visits || 0}
-                    subtitle={loading ? '' : `${dashboardData?.metrics.current_in_gym || 0} miembros únicos`}
-                    icon={ClipboardCheck}
+                    value={m.today_visits ?? 0}
+                    change={m.today_visits_change}
+                    loading={loading}
+                    icon={<ClipboardCheck className="h-5 w-5 text-white" />}
                     color="bg-primary-600"
                 />
-                <StatsCard
-                    title="Miembros Totales"
-                    value={loading ? '...' : dashboardData?.metrics.total_members || 0}
-                    icon={Users}
+                <SmartStatCard
+                    title="Miembros"
+                    value={m.total_members ?? 0}
+                    loading={loading}
+                    icon={<Users className="h-5 w-5 text-white" />}
                     color="bg-primary-500"
                 />
-                <StatsCard
+                <SmartStatCard
                     title="Subs Activas"
-                    value={loading ? '...' : dashboardData?.metrics.active_subscriptions || 0}
-                    icon={CreditCard}
+                    value={m.active_subscriptions ?? 0}
+                    loading={loading}
+                    icon={<CreditCard className="h-5 w-5 text-white" />}
                     color="bg-primary-800"
                 />
-                <StatsCard
+                <SmartStatCard
                     title="Ingresos Hoy"
-                    value={loading ? '...' : formatPrice(dashboardData?.payment_metrics.today_income || 0)}
-                    icon={DollarSign}
-                    color="bg-success-600"
+                    value={formatPrice(pm.today_income ?? 0)}
+                    change={pm.today_income_change}
+                    loading={loading}
+                    icon={<DollarSign className="h-5 w-5 text-white" />}
+                    color="bg-green-600"
                 />
-                <StatsCard
-                    title="Pagos Pendientes"
-                    value={loading ? '...' : formatPrice(dashboardData?.payment_metrics.pending_payments || 0)}
-                    icon={AlertCircle}
-                    color="bg-warning-600"
+                <SmartStatCard
+                    title="Pendiente"
+                    value={formatPrice(pm.pending_payments ?? 0)}
+                    loading={loading}
+                    icon={<AlertCircle className="h-5 w-5 text-white" />}
+                    color="bg-yellow-500"
                 />
             </div>
 
-            {/* Alertas y Metricas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            {/* ── Fila 2: Gráficas + Rendimiento del Día ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <WeeklyChart data={dashboardData?.weekly_stats || []} loading={loading} />
+                    <IncomeChart data={dashboardData?.weekly_income || []} loading={loading} />
+                </div>
+                <DayPerformance loading={loading} />
+            </div>
+
+            {/* ── Fila 3: Alertas ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <ExpiringSubscriptions
                     subscriptions={dashboardData?.expiring_subscriptions || []}
                     loading={loading}
@@ -125,17 +211,6 @@ function Dashboard() {
                 />
             </div>
 
-            {/* Gráficos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <WeeklyChart
-                    data={dashboardData?.weekly_stats || []}
-                    loading={loading}
-                />
-                <IncomeChart
-                    data={dashboardData?.weekly_income || []}
-                    loading={loading}
-                />
-            </div>
         </div>
     );
 }

@@ -1,19 +1,6 @@
-const RecentActivity = ({ checkins, loading }) => {
-    if (loading) {
-        return (
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-primary mb-4">
-                    Actividad reciente
-                </h2>
-                <div className="animate-pulse space-y-3">
-                    {[1, 2, 3, 4, 5].map(i => (
-                        <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
+import InfoCard from '../../components/common/InfoCard';
 
+const RecentActivity = ({ checkins, loading }) => {
     const getStatusBadge = (status) => {
         const badges = {
             active: 'bg-success-100 text-success-800',
@@ -42,16 +29,23 @@ const RecentActivity = ({ checkins, loading }) => {
         });
     };
 
+    if (loading) {
+        return (
+            <InfoCard title="Actividad reciente">
+                <div className="animate-pulse space-y-3">
+                    {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                    ))}
+                </div>
+            </InfoCard>
+        );
+    }
     return (
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-primary mb-4">
-                Actividad reciente
-            </h2>
-
+        <InfoCard title="Actividad reciente">
             {checkins.length === 0 ? (
                 <div className="text-center py-8">
                     <p className="text-secondary">
-                        No hay check-ins recientes
+                        No hay asistencias recientes
                     </p>
                 </div>
             ) : (
@@ -79,7 +73,7 @@ const RecentActivity = ({ checkins, loading }) => {
                     ))}
                 </div>
             )}
-        </div>
+        </InfoCard>
     );
 };
 

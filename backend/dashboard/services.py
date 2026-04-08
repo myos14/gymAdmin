@@ -36,33 +36,55 @@ SPANISH_DAYS = {
 }
 
 def get_dashboard_metrics(db: Session) -> DashboardMetrics:
-    """Get main dashboard metrics"""
     today = get_today()
-    
+    yesterday = today - timedelta(days=1)
+
     current_in_gym = db.query(Attendance).filter(
         and_(
             Attendance.date == today,
             Attendance.check_out_time.is_(None)
         )
     ).count()
-    
-    today_visits = db.query(Attendance).filter(Attendance.date == today).count()
-    
+
+    today_visits = db.query(Attendance).filter(
+        Attendance.date == today
+    ).count()
+
+    yesterday_visits = db.query(Attendance).filter(
+        Attendance.date == yesterday
+    ).count()
+
+    visits_change = 0
+    if yesterday_visits > 0:
+        visits_change = ((today_visits - yesterday_visits) / yesterday_visits) * 100
+
     total_members = db.query(Member).filter(Member.is_active == True).count()
-    
+
     active_subscriptions = db.query(Subscription).filter(
         and_(
             Subscription.status == "active",
             Subscription.end_date >= today
         )
     ).count()
-    
+
     return DashboardMetrics(
         current_in_gym=current_in_gym,
         today_visits=today_visits,
+        today_visits_change=visits_change,
         total_members=total_members,
         active_subscriptions=active_subscriptions
     )
+
+def get_hourly_attendance(db: Session):
+    stats = db.query(
+        func.extract('hour', Attendance.check_in_time).label('hour'),
+        func.count(Attendance.id)
+    ).group_by('hour').order_by('hour').all()
+
+    return [
+        {"hour": f"{int(h)}:00", "count": c}
+        for h, c in stats
+    ]
 
 def get_expiring_subscriptions(db: Session, days: int = 7) -> List[ExpiringSubscription]:
     """Get subscriptions expiring in the next X days"""

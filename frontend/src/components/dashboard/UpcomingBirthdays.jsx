@@ -8,8 +8,9 @@ function UpcomingBirthdays({ birthdays = [], loading }) {
         const cleaned = phone.replace(/\D/g, '');
         const full = cleaned.startsWith('52') ? cleaned : `52${cleaned}`;
         const msg = `¡Hola ${name}!
-En Fuerza Fit te deseamos un feliz cumpleaños y que disfrutes tu día.
-Solo por hoy, tienes 10% de descuento en cualquier suscripción`;
+En *Fuerza Fit* te deseamos un feliz cumpleaños. ¡Que disfrutes mucho tu día! 💪
+
+Como regalo, hoy tienes *10% de descuento* en cualquier suscripción.`;
         window.open(`https://wa.me/${full}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
@@ -22,8 +23,8 @@ Solo por hoy, tienes 10% de descuento en cualquier suscripción`;
     if (loading) {
         return (
             <InfoCard 
-                title="Cumpleaños"
-                subtitle="Próximos 5 días"
+                title="Próximos cumpleaños"
+                subtitle="Sigueintes 5 días"
             >
                 <div className="animate-pulse space-y-3">
                     {[1, 2, 3].map(i => (
@@ -35,8 +36,8 @@ Solo por hoy, tienes 10% de descuento en cualquier suscripción`;
     }
     return (
         <InfoCard 
-            title="Cumpleaños"
-            subtitle="Próximos 5 días"
+            title="Próximos cumpleaños"
+            subtitle="Sigueintes 5 días"
         >
             {birthdays.length === 0 ? (
                 <p className="text-center text-gray-500 text-sm py-6">

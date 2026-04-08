@@ -53,6 +53,7 @@ class DashboardMetrics(BaseModel):
     today_visits: int
     total_members: int
     active_subscriptions: int
+    today_visits_change: float = 0
 
 class PaymentMetrics(BaseModel):
     today_income: float

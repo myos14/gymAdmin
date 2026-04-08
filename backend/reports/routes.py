@@ -124,7 +124,69 @@ def get_reports_summary(
     
     renewal_rate = round((renewed_members / expired_in_period * 100), 1) if expired_in_period > 0 else 0
     
+    # Plan metrics 
+    plan_metrics = db.query(
+        Plan.id.label('plan_id'),
+        Plan.name.label('plan_name'),
+        func.count(Subscription.id).label('active_subscriptions')
+    ).join(
+        Subscription, Plan.id == Subscription.plan_id
+    ).filter(
+        Subscription.status == 'active',
+        Subscription.end_date >= today
+    ).group_by(Plan.id, Plan.name).order_by(desc('active_subscriptions')).all()
+
+    # Recent checkins
+    recent_checkins = db.query(
+        Attendance.id,
+        Attendance.check_in_time,
+        Member.first_name,
+        Member.last_name_paternal,
+        Member.last_name_maternal,
+        case(
+            (
+                db.query(Subscription).filter(
+                    Subscription.member_id == Member.id,
+                    Subscription.status == 'active',
+                    Subscription.end_date >= today
+                ).exists(), 'active'
+            ),
+            (
+                db.query(Subscription).filter(
+                    Subscription.member_id == Member.id,
+                    Subscription.status == 'active',
+                    Subscription.end_date >= today,
+                    Subscription.end_date <= today + timedelta(days=7)
+                ).exists(), 'expiring_soon'
+            ),
+            else_='expired'
+        ).label('subscription_status')
+    ).join(
+        Member, Attendance.member_id == Member.id
+    ).order_by(desc(Attendance.check_in_time)).limit(20).all()
+
     return {
+        "plan_metrics": [
+            {
+                "plan_id": p.plan_id,
+                "plan_name": p.plan_name,
+                "active_subscriptions": p.active_subscriptions
+            }
+            for p in plan_metrics
+        ],
+        "recent_checkins": [
+            {
+                "id": c.id,
+                "check_in_time": c.check_in_time.isoformat(),
+                "subscription_status": c.subscription_status,
+                "member": {
+                    "first_name": c.first_name,
+                    "last_name_paternal": c.last_name_paternal,
+                    "last_name_maternal": c.last_name_maternal
+                }
+            }
+            for c in recent_checkins
+        ],
         "period": period,
         "start_date": start_date.isoformat(),
         "end_date": today.isoformat(),

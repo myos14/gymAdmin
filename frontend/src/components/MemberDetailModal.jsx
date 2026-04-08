@@ -44,7 +44,8 @@ function MemberDetailModal({ member, onClose }) {
     const formatTime = (timestamp) => {
         return new Date(timestamp).toLocaleTimeString('es-MX', {
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timezone: 'America/Mexico_City'
         });
     };
 

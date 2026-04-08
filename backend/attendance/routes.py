@@ -2,9 +2,10 @@ import os
 from attendance.qr_service import generate_member_qr_token, validate_member_qr_token
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import and_
 from typing import List, Optional
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from database import get_db
 from attendance.models import Attendance
@@ -18,12 +19,12 @@ from attendance.schemas import(
     AttendanceStats
 )
 
+MX = ZoneInfo("America/Mexico_City")
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
-# Helper function to auto-safe
 def _auto_checkout_expired(db: Session, hours_limit: int = 4):
     """Helper: Auto-checkout de sesiones expiradas"""
-    time_limit = datetime.now() - timedelta(hours=hours_limit)
+    time_limit = datetime.now(MX) - timedelta(hours=hours_limit)
     
     expired = db.query(Attendance).filter(
         and_(
@@ -33,7 +34,10 @@ def _auto_checkout_expired(db: Session, hours_limit: int = 4):
     ).all()
     
     for session in expired:
-        session.check_out_time = session.check_in_time + timedelta(hours=hours_limit)
+        check_in = session.check_in_time
+        if check_in.tzinfo is None:
+            check_in = check_in.replace(tzinfo=MX)
+        session.check_out_time = check_in + timedelta(hours=hours_limit)
         session.duration_minutes = hours_limit * 60
         if session.notes:
             session.notes += f" [Auto-checkout {hours_limit}h]"
@@ -71,8 +75,7 @@ def check_in(attendance: AttendanceCheckIn, db: Session = Depends(get_db)):
             status_code=400,
             detail="El miembro no tiene una suscripción activa. No puede ingresar."
         )
-        
-    # Check if already checked in today (without checkout)
+    
     today = date.today()
     existing_checkin = db.query(Attendance).filter(
         and_(
@@ -83,12 +86,14 @@ def check_in(attendance: AttendanceCheckIn, db: Session = Depends(get_db)):
     ).first()
     
     if existing_checkin:
+        check_in_local = existing_checkin.check_in_time
+        if check_in_local.tzinfo is not None:
+            check_in_local = check_in_local.astimezone(MX)
         raise HTTPException(
             status_code=400,
-            detail=f"El miembro ya tiene un check-in activo hoy a las {existing_checkin.check_in_time.strftime('%H:%M')}"
+            detail=f"El miembro ya tiene un check-in activo hoy a las {check_in_local.strftime('%H:%M')}"
         )
-        
-    # Create attendance record
+    
     db_attendance = Attendance(
         member_id=attendance.member_id,
         subscription_id=active_subscription.id,
@@ -115,16 +120,19 @@ def check_out(
         raise HTTPException(status_code=404, detail="Registro de asistencia no encontrada")
     
     if db_attendance.check_out_time is not None:
+        checkout_local = db_attendance.check_out_time.astimezone(MX)
         raise HTTPException(
-            status_code=400, 
-            detail=f"Este registro ya tiene check-out a las {db_attendance.check_out_time.strftime('%H:%M')}"
+            status_code=400,
+            detail=f"Este registro ya tiene check-out a las {checkout_local.strftime('%H:%M')}"
         )
-        
-    # Set check-out time
-    now = datetime.now()
+    
+    now = datetime.now(MX)
     db_attendance.check_out_time = now
     
-    duration = now - db_attendance.check_in_time
+    check_in = db_attendance.check_in_time
+    if check_in.tzinfo is None:
+        check_in = check_in.replace(tzinfo=MX)
+    duration = now - check_in
     db_attendance.duration_minutes = int(duration.total_seconds() / 60)
     
     if checkout_data.notes:
@@ -219,7 +227,6 @@ def get_daily_stats(
     total_visits = len(attendances)
     unique_members = len(set(a.member_id for a in attendances))
     
-    # Calculate average duration (only for completed visits)
     completed_visits = [a for a in attendances if a.duration_minutes is not None]
     avg_duration = None
     if completed_visits:
@@ -292,7 +299,6 @@ def get_member_qr_token(member_id: int, db: Session = Depends(get_db)):
         "member_name": f"{member.first_name} {member.last_name_paternal}"
     }
 
-
 @router.post("/qr-checkin")
 def qr_checkin(token: str, db: Session = Depends(get_db)):
     try:
@@ -329,9 +335,10 @@ def qr_checkin(token: str, db: Session = Depends(get_db)):
     ).first()
 
     if existing:
+        check_in_local = existing.check_in_time.astimezone(MX)
         raise HTTPException(
             status_code=400,
-            detail=f"Ya tiene entrada activa desde las {existing.check_in_time.strftime('%H:%M')}"
+            detail=f"Ya tiene entrada activa desde las {check_in_local.strftime('%H:%M')}"
         )
 
     db_attendance = Attendance(
@@ -344,6 +351,7 @@ def qr_checkin(token: str, db: Session = Depends(get_db)):
     db.refresh(db_attendance)
 
     days_remaining = (active_subscription.end_date - today).days
+    check_in_local = db_attendance.check_in_time.astimezone(MX)
 
     return {
         "success": True,
@@ -351,7 +359,7 @@ def qr_checkin(token: str, db: Session = Depends(get_db)):
         "member_id": member_id,
         "member_name": f"{member.first_name} {member.last_name_paternal}"
                         + (f" {member.last_name_maternal}" if member.last_name_maternal else ""),
-        "check_in_time": db_attendance.check_in_time.strftime("%H:%M"),
+        "check_in_time": check_in_local.strftime("%H:%M"),
         "subscription": {
             "plan_name": active_subscription.plan.name if active_subscription.plan else "Plan",
             "end_date": active_subscription.end_date.strftime("%d/%m/%Y"),

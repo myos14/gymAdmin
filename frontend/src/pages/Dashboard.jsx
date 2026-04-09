@@ -3,6 +3,7 @@ import { Users, ClipboardCheck, UserCheck, CreditCard, DollarSign, AlertCircle }
 import { useLocation } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
 import ExpiringSubscriptions from '../components/dashboard/ExpiringSubscriptions';
+import TodayAttendanceModal from '../components/dashboard/TodayAttendanceModal';
 import UpcomingBirthdays from '../components/dashboard/UpcomingBirthdays';
 import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
@@ -90,6 +91,7 @@ function Dashboard() {
     const [error, setError]                 = useState(null);
     const location = useLocation();
     const [showInGymModal, setShowInGymModal] = useState(false);
+    const [showTodayModal, setShowTodayModal] = useState(false);
 
     useEffect(() => {
         api.post('/attendance/auto-checkout').catch(() => {});
@@ -151,14 +153,16 @@ function Dashboard() {
                         color="bg-primary-700"
                     />
                 </div>
-                <SmartStatCard
-                    title="Asistencias Hoy"
-                    value={m.today_visits ?? 0}
-                    change={m.today_visits_change}
-                    loading={loading}
-                    icon={<ClipboardCheck className="h-5 w-5 text-white" />}
-                    color="bg-primary-600"
-                />
+                <div onClick={() => setShowTodayModal(true)} className="cursor-pointer">
+                    <SmartStatCard
+                        title="Asistencias Hoy"
+                        value={m.today_visits ?? 0}
+                        change={m.today_visits_change}
+                        loading={loading}
+                        icon={<ClipboardCheck className="h-5 w-5 text-white" />}
+                        color="bg-primary-600"
+                    />
+                </div>
                 <SmartStatCard
                     title="Miembros"
                     value={m.total_members ?? 0}
@@ -217,6 +221,9 @@ function Dashboard() {
             </div>
             {showInGymModal && (
                 <InGymModal onClose={() => setShowInGymModal(false)} />
+            )}
+            {showTodayModal && (
+                <TodayAttendanceModal onClose={() => setShowTodayModal(false)} />
             )}
         </div>
     );

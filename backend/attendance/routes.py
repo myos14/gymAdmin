@@ -294,6 +294,19 @@ def get_member_qr_token(member_id: int, db: Session = Depends(get_db)):
         "member_name": f"{member.first_name} {member.last_name_paternal}"
     }
 
+@router.get("/today/list", response_model=List[AttendanceWithMemberResponse])
+def get_today_attendances(db: Session = Depends(get_db)):
+    """Obtener todas las asistencias de hoy con info del miembro"""
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("America/Mexico_City")).date()
+    
+    attendances = db.query(Attendance).join(
+        Member, Attendance.member_id == Member.id
+    ).filter(
+        Attendance.date == today
+    ).order_by(Attendance.check_in_time.desc()).all()
+    
+    return attendances
 # ── Rutas con parámetro dinámico /{attendance_id} AL FINAL ───
 
 @router.get("/{attendance_id}", response_model=AttendanceResponse)

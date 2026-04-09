@@ -254,6 +254,7 @@ def register_payment(
 @router.get("/")
 def get_subscriptions(
     status: Optional[str] = Query(None, pattern="^(active|expired|cancelled)$"),
+    payment_status: Optional[str] = Query(None, pattern="^(pending|partial|paid)$"),
     member_id: Optional[int] = None,
     search: Optional[str] = None,
     skip: int = Query(0, ge=0),
@@ -276,6 +277,8 @@ def get_subscriptions(
             (Member.last_name_paternal.ilike(search_pattern)) |
             (Plan.name.ilike(search_pattern))
         )
+    if payment_status:
+        query = query.filter(Subscription.payment_status == payment_status)
     
     total = query.count()
     subscriptions = query.order_by(Subscription.created_at.desc()).offset(skip).limit(limit).all()

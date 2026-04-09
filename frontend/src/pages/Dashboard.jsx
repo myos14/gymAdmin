@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
 import ExpiringSubscriptions from '../components/dashboard/ExpiringSubscriptions';
 import TodayAttendanceModal from '../components/dashboard/TodayAttendanceModal';
+import PendingPaymentsModal from '../components/dashboard/PendingPaymentsModal';
 import UpcomingBirthdays from '../components/dashboard/UpcomingBirthdays';
 import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
@@ -92,6 +93,8 @@ function Dashboard() {
     const location = useLocation();
     const [showInGymModal, setShowInGymModal] = useState(false);
     const [showTodayModal, setShowTodayModal] = useState(false);
+    const [showPendingModal, setShowPendingModal] = useState(false);
+
 
     useEffect(() => {
         api.post('/attendance/auto-checkout').catch(() => {});
@@ -185,13 +188,15 @@ function Dashboard() {
                     icon={<DollarSign className="h-5 w-5 text-white" />}
                     color="bg-green-600"
                 />
-                <SmartStatCard
-                    title="Pendiente"
-                    value={formatPrice(pm.pending_payments ?? 0)}
-                    loading={loading}
-                    icon={<AlertCircle className="h-5 w-5 text-white" />}
-                    color="bg-yellow-500"
-                />
+                <div onClick={() => setShowPendingModal(true)} className="cursor-pointer">
+                    <SmartStatCard
+                        title="Pendiente"
+                        value={formatPrice(pm.pending_payments ?? 0)}
+                        loading={loading}
+                        icon={<AlertCircle className="h-5 w-5 text-white" />}
+                        color="bg-yellow-500"
+                    />
+                </div>
             </div>
 
             {/* ── Fila 2: Gráficas + Rendimiento del Día ── */}
@@ -224,6 +229,14 @@ function Dashboard() {
             )}
             {showTodayModal && (
                 <TodayAttendanceModal onClose={() => setShowTodayModal(false)} />
+            )}
+            {showPendingModal && (
+                <PendingPaymentsModal
+                    onClose={() => {
+                        setShowPendingModal(false);
+                        loadDashboard();
+                    }}
+                />
             )}
         </div>
     );

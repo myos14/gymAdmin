@@ -19,6 +19,7 @@ class AttendanceCheckOut(BaseModel):
 class MemberInfo(BaseModel):
     first_name: str
     last_name_paternal: str
+    last_name_maternal: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     

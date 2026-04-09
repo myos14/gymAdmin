@@ -8,6 +8,7 @@ import RecentPayments from '../components/dashboard/RecentPayments';
 import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
 import GenderChart from '../components/dashboard/GenderChart';
+import InGymModal from '../components/dashboard/InGymModal';
 import api from '../services/api';
 
 /* ========================= SmartStatCard ========================= */
@@ -88,6 +89,7 @@ function Dashboard() {
     const [loading, setLoading]             = useState(true);
     const [error, setError]                 = useState(null);
     const location = useLocation();
+    const [showInGymModal, setShowInGymModal] = useState(false);
 
     useEffect(() => {
         api.post('/attendance/auto-checkout').catch(() => {});
@@ -140,13 +142,15 @@ function Dashboard() {
 
             {/* ── Fila 1: KPIs ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                <SmartStatCard
-                    title="En el Gym"
-                    value={m.current_in_gym ?? 0}
-                    loading={loading}
-                    icon={<UserCheck className="h-5 w-5 text-white" />}
-                    color="bg-primary-700"
-                />
+                <div onClick={() => setShowInGymModal(true)} className="cursor-pointer">
+                    <SmartStatCard
+                        title="En el Gym"
+                        value={m.current_in_gym ?? 0}
+                        loading={loading}
+                        icon={<UserCheck className="h-5 w-5 text-white" />}
+                        color="bg-primary-700"
+                    />
+                </div>
                 <SmartStatCard
                     title="Asistencias Hoy"
                     value={m.today_visits ?? 0}
@@ -211,7 +215,9 @@ function Dashboard() {
                     loading={loading}
                 />
             </div>
-
+            {showInGymModal && (
+                <InGymModal onClose={() => setShowInGymModal(false)} />
+            )}
         </div>
     );
 }

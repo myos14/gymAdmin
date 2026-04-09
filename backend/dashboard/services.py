@@ -321,26 +321,26 @@ def get_plan_metrics(db: Session) -> List[dict]:
 
 def get_upcoming_birthdays(db: Session, days: int = 5) -> List[dict]:
     """Get members with birthdays in the next X days"""
-    from members.models import Member
-    
     today = get_today()
     members = db.query(Member).filter(Member.is_active == True, Member.date_of_birth != None).all()
     
     upcoming = []
     for member in members:
         birth = member.date_of_birth
+        
         try:
             birthday_this_year = birth.replace(year=today.year)
         except ValueError:
             birthday_this_year = birth.replace(year=today.year, day=28)
         
-        if birthday_this_year < today:
+        days_until = (birthday_this_year - today).days
+        
+        if days_until < 0:
             try:
                 birthday_this_year = birth.replace(year=today.year + 1)
             except ValueError:
                 birthday_this_year = birth.replace(year=today.year + 1, day=28)
-        
-        days_until = (birthday_this_year - today).days
+            days_until = (birthday_this_year - today).days
         
         if 0 <= days_until <= days:
             upcoming.append({

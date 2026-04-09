@@ -180,31 +180,40 @@ def get_gender_stats(db: Session) -> dict:
     }
 
 def get_weekly_attendance_stats(db: Session, days: int = 5) -> List[DailyAttendanceStats]:
-    """Get attendance statistics for the last X days"""
+    from sqlalchemy import case
     today = get_today()
     start_date = today - timedelta(days=days - 1)
     
-    # Query attendance grouped by date
     stats = db.query(
         Attendance.date,
-        func.count(Attendance.id).label('total_visits')
-    ).filter(
+        func.count(Attendance.id).label('total_visits'),
+        func.sum(case((Member.gender == 'masculino', 1), else_=0)).label('masculino'),
+        func.sum(case((Member.gender == 'femenino', 1), else_=0)).label('femenino')
+    ).join(Member, Attendance.member_id == Member.id).filter(
         Attendance.date >= start_date
     ).group_by(Attendance.date).order_by(Attendance.date.asc()).all()
     
-    # Create a dict for easy lookup
-    stats_dict = {stat.date: stat.total_visits for stat in stats}
+    stats_dict = {
+        stat.date: {
+            'total_visits': stat.total_visits,
+            'masculino': stat.masculino or 0,
+            'femenino': stat.femenino or 0
+        }
+        for stat in stats
+    }
     
-    # Generate list for all days (including days with 0 visits)
     result = []
     for i in range(days):
         current_date = start_date + timedelta(days=i)
         day_name = SPANISH_DAYS[current_date.weekday()]
+        day_data = stats_dict.get(current_date, {'total_visits': 0, 'masculino': 0, 'femenino': 0})
         
         result.append(DailyAttendanceStats(
             date=current_date.isoformat(),
-            total_visits=stats_dict.get(current_date, 0),
-            day_name=day_name
+            total_visits=day_data['total_visits'],
+            day_name=day_name,
+            masculino=day_data['masculino'],
+            femenino=day_data['femenino']
         ))
     
     return result

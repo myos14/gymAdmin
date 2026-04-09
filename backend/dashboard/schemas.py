@@ -47,6 +47,8 @@ class DailyAttendanceStats(BaseModel):
     date: str
     total_visits: int
     day_name: str
+    masculino: int= 0
+    femenino: int= 0
 
 class DashboardMetrics(BaseModel):
     current_in_gym: int

@@ -11,74 +11,38 @@ import WeeklyChart from '../components/dashboard/WeeklyChart';
 import IncomeChart from '../components/dashboard/IncomeChart';
 import GenderChart from '../components/dashboard/GenderChart';
 import InGymModal from '../components/dashboard/InGymModal';
+import RetentionCard from '../components/dashboard/RetentionCard';
 import api from '../services/api';
 
 /* ========================= SmartStatCard ========================= */
-function SmartStatCard({ title, value, change, icon, color, loading }) {
+function SmartStatCard({ title, value, change, icon, color, loading, clickable }) {
     const positive = change >= 0;
     return (
-        <div className="bg-white p-5 rounded-xl shadow-sm border hover:shadow-md transition">
+        <div className={`bg-white p-5 rounded-xl shadow-sm border transition group h-full ${
+            clickable ? 'hover:shadow-md hover:border-primary-200' : 'hover:shadow-md'
+        }`}>
             <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-500">{title}</span>
-                <div className={`p-2 rounded-lg ${color}`}>{icon}</div>
+                <span className="text-sm text-gray-500 truncate">{title}</span>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {clickable && (
+                        <span className="text-[10px] text-gray-300 group-hover:text-primary-400 transition font-medium">
+                            Ver →
+                        </span>
+                    )}
+                    <div className={`p-2 rounded-lg ${color}`}>{icon}</div>
+                </div>
             </div>
+
             {loading ? (
                 <div className="animate-pulse h-8 w-20 bg-gray-200 rounded mt-1" />
             ) : (
-                <div className="text-2xl font-bold text-gray-800">{value}</div>
-            )}
-            {!loading && change !== undefined && (
-                <div className={`text-sm mt-1 ${positive ? 'text-green-600' : 'text-red-500'}`}>
-                    {positive ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
-                    <span className="text-gray-400 ml-1">vs ayer</span>
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* ========================= DayPerformance ========================= */
-function DayPerformance({ loading }) {
-    const [stats, setStats] = useState(null);
-
-    useEffect(() => {
-        api.get('/attendance/stats/daily')
-            .then(r => setStats(r.data))
-            .catch(() => {});
-    }, []);
-
-    const rows = [
-        {
-            label: 'Visitas únicas hoy',
-            value: stats?.unique_members
-        },
-        {
-            label: 'Duración promedio',
-            value: stats?.average_duration_minutes
-                ? `${Math.floor(stats.average_duration_minutes / 60)}h ${stats.average_duration_minutes % 60}min`
-                : '—'
-        },
-        {
-            label: 'Visitas totales hoy',
-            value: stats?.total_visits
-        },
-    ];
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow h-full">
-            <h3 className="font-semibold mb-4 text-gray-700">Rendimiento del Día</h3>
-            {loading || !stats ? (
-                <div className="animate-pulse space-y-3">
-                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-200 rounded" />)}
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {rows.map(({ label, value }) => (
-                        <div key={label} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm text-gray-500">{label}</span>
-                            <span className="font-bold text-gray-800">{value ?? '—'}</span>
-                        </div>
-                    ))}
+                <div className="flex items-end justify-between mt-1">
+                    <div className="text-2xl font-bold text-gray-800">{value}</div>
+                    {change !== undefined && (
+                        <span className={`text-xs font-medium mb-0.5 ${positive ? 'text-green-600' : 'text-red-500'}`}>
+                            {positive ? '↑' : '↓'}{Math.abs(change).toFixed(1)}% vs ayer
+                        </span>
+                    )}
                 </div>
             )}
         </div>
@@ -91,10 +55,9 @@ function Dashboard() {
     const [loading, setLoading]             = useState(true);
     const [error, setError]                 = useState(null);
     const location = useLocation();
-    const [showInGymModal, setShowInGymModal] = useState(false);
-    const [showTodayModal, setShowTodayModal] = useState(false);
+    const [showInGymModal, setShowInGymModal]     = useState(false);
+    const [showTodayModal, setShowTodayModal]     = useState(false);
     const [showPendingModal, setShowPendingModal] = useState(false);
-
 
     useEffect(() => {
         api.post('/attendance/auto-checkout').catch(() => {});
@@ -139,24 +102,25 @@ function Dashboard() {
         );
     }
 
-    const m  = dashboardData?.metrics         || {};
-    const pm = dashboardData?.payment_metrics  || {};
+    const m  = dashboardData?.metrics        || {};
+    const pm = dashboardData?.payment_metrics || {};
 
     return (
-        <div className="p-8 space-y-6 bg-primary-50 min-h-screen">
+        <div className="p-6 md:p-8 space-y-6 bg-primary-50 min-h-screen">
 
             {/* ── Fila 1: KPIs ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                <div onClick={() => setShowInGymModal(true)} className="cursor-pointer">
+                <div onClick={() => setShowInGymModal(true)} className="cursor-pointer h-full">
                     <SmartStatCard
                         title="En el Gym"
                         value={m.current_in_gym ?? 0}
                         loading={loading}
                         icon={<UserCheck className="h-5 w-5 text-white" />}
                         color="bg-primary-700"
+                        clickable
                     />
                 </div>
-                <div onClick={() => setShowTodayModal(true)} className="cursor-pointer">
+                <div onClick={() => setShowTodayModal(true)} className="cursor-pointer h-full">
                     <SmartStatCard
                         title="Asistencias Hoy"
                         value={m.today_visits ?? 0}
@@ -164,6 +128,7 @@ function Dashboard() {
                         loading={loading}
                         icon={<ClipboardCheck className="h-5 w-5 text-white" />}
                         color="bg-primary-600"
+                        clickable
                     />
                 </div>
                 <SmartStatCard
@@ -188,42 +153,62 @@ function Dashboard() {
                     icon={<DollarSign className="h-5 w-5 text-white" />}
                     color="bg-green-600"
                 />
-                <div onClick={() => setShowPendingModal(true)} className="cursor-pointer">
+                <div onClick={() => setShowPendingModal(true)} className="cursor-pointer h-full">
                     <SmartStatCard
                         title="Pendiente"
                         value={formatPrice(pm.pending_payments ?? 0)}
                         loading={loading}
                         icon={<AlertCircle className="h-5 w-5 text-white" />}
                         color="bg-yellow-500"
+                        clickable
                     />
                 </div>
             </div>
 
-            {/* ── Fila 2: Gráficas + Rendimiento del Día ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* ── Fila 2: Gráficas + Retención ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="xl:col-span-2">
                     <WeeklyChart data={dashboardData?.weekly_stats || []} loading={loading} />
+                </div>
+                <div className="xl:col-span-1">
                     <IncomeChart data={dashboardData?.weekly_income || []} loading={loading} />
                 </div>
-                <GenderChart data={dashboardData?.gender_stats} loading={loading} />
+                <div className="xl:col-span-1">
+                    <RetentionCard loading={loading} />
+                </div>
             </div>
 
-            {/* ── Fila 3: Alertas ── */}
+            {/* ── Fila 3: Operacional ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <ExpiringSubscriptions
-                    subscriptions={dashboardData?.expiring_subscriptions || []}
-                    loading={loading}
-                    onRefresh={loadDashboard}
-                />
-                <RecentPayments
-                    payments={dashboardData?.recent_payments || []}
-                    loading={loading}
-                />
-                <UpcomingBirthdays
-                    birthdays={dashboardData?.upcoming_birthdays || []}
-                    loading={loading}
-                />
+                <div className="lg:col-span-2">
+                    <ExpiringSubscriptions
+                        subscriptions={dashboardData?.expiring_subscriptions || []}
+                        loading={loading}
+                        onRefresh={loadDashboard}
+                    />
+                </div>
+                <div className="lg:col-span-1">
+                    <RecentPayments
+                        payments={dashboardData?.recent_payments || []}
+                        loading={loading}
+                    />
+                </div>
             </div>
+
+            {/* ── Fila 4: Cumpleaños + Género ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <UpcomingBirthdays
+                        birthdays={dashboardData?.upcoming_birthdays || []}
+                        loading={loading}
+                    />
+                </div>
+                <div className="lg:col-span-1">
+                    <GenderChart data={dashboardData?.gender_stats} loading={loading} />
+                </div>
+            </div>
+
+            {/* ── Modales ── */}
             {showInGymModal && (
                 <InGymModal onClose={() => setShowInGymModal(false)} />
             )}

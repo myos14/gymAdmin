@@ -8,6 +8,7 @@ function PendingPaymentsModal({ onClose }) {
     const [paying, setPaying] = useState(null);
     const [payAmounts, setPayAmounts] = useState({});
     const [notification, setNotification] = useState(null);
+    const [payErrors, setPayErrors] = useState({});
 
     useEffect(() => {
         loadPending();
@@ -45,7 +46,15 @@ function PendingPaymentsModal({ onClose }) {
     const handlePay = async (sub) => {
         const amount = parseFloat(payAmounts[sub.id] || 0);
         const adeudo = (sub.plan_price || 0) - (sub.amount_paid || 0);
-        if (!amount || amount <= 0 || amount > adeudo) return;
+
+        if (!amount || amount <= 0) {
+            setPayErrors(prev => ({ ...prev, [sub.id]: 'Ingresa un monto válido' }));
+            return;
+        }
+        if (amount > adeudo) {
+            setPayErrors(prev => ({ ...prev, [sub.id]: `No puede exceder el adeudo de ${formatPrice(adeudo)}` }));
+            return;
+        }
 
         setPaying(sub.id);
         try {
@@ -177,16 +186,19 @@ function PendingPaymentsModal({ onClose }) {
                                             <input
                                                 type="number"
                                                 value={payAmounts[sub.id] || ''}
-                                                onChange={e => setPayAmounts(prev => ({
-                                                    ...prev,
-                                                    [sub.id]: e.target.value
-                                                }))}
+                                                onChange={e => {
+                                                    setPayAmounts(prev => ({ ...prev, [sub.id]: e.target.value }));
+                                                    setPayErrors(prev => ({ ...prev, [sub.id]: '' }));
+                                                }}
                                                 placeholder={`Máx. ${formatPrice(adeudo)}`}
                                                 min="0.01"
                                                 step="0.01"
                                                 max={adeudo}
                                                 className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-white"
                                             />
+                                            {payErrors[sub.id] && (
+                                                <p className="text-xs text-red-500 mt-1">{payErrors[sub.id]}</p>
+                                            )}
                                             <button
                                                 onClick={() => handlePay(sub)}
                                                 disabled={paying === sub.id || !payAmounts[sub.id]}

@@ -96,7 +96,7 @@ function SubscriptionsList() {
         const cls = daysRemaining <= 0   ? 'bg-red-100 text-red-800' :
                     daysRemaining <= 7   ? 'bg-yellow-100 text-yellow-800' :
                     daysRemaining <= 15  ? 'bg-yellow-50 text-yellow-700' :
-                                          'bg-blue-100 text-blue-800';
+                                            'bg-blue-100 text-blue-800';
         return (
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
                 <Calendar className="h-3 w-3" />
@@ -126,7 +126,7 @@ function SubscriptionsList() {
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-medium flex items-center gap-2 text-sm shadow-sm"
+                    className="px-4 py-2 bg-primary-700 text-white rounded-xl hover:bg-primary-800 transition font-medium flex items-center gap-2 text-sm shadow-sm"
                 >
                     <Plus className="h-4 w-4" /> Nueva Suscripción
                 </button>
@@ -135,7 +135,7 @@ function SubscriptionsList() {
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { title: 'Total',              value: metrics.total,            icon: <CreditCard  className="h-5 w-5 text-white"/>, color: 'bg-primary-500' },
+                    { title: 'Total',              value: metrics.total,            icon: <CreditCard  className="h-5 w-5 text-white"/>, color: 'bg-primary-700' },
                     { title: 'Activas',             value: metrics.active,           icon: <CheckCircle className="h-5 w-5 text-white"/>, color: 'bg-green-500'   },
                     { title: 'Vencen esta semana',  value: metrics.expiringThisWeek, icon: <AlertCircle className="h-5 w-5 text-white"/>, color: 'bg-yellow-500'  },
                     { title: 'Vencidas',            value: metrics.expired,          icon: <XCircle     className="h-5 w-5 text-white"/>, color: 'bg-red-400'     },
@@ -186,7 +186,7 @@ function SubscriptionsList() {
                 ) : (
                     <>
                         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-                            <table className="w-full">
+                            <table className="w-full table-fixed">
                                 <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                                     <tr>
                                         {['Miembro','Plan','Inicio','Fin','Estado','Monto','Acciones'].map(h => (
@@ -202,9 +202,9 @@ function SubscriptionsList() {
                                     ) : subscriptions.map(sub => {
                                         const days = calculateDaysRemaining(sub.end_date);
                                         const rowCls = sub.status === 'expired'
-                                            ? 'bg-red-50/40 hover:bg-red-50'
-                                            : days <= 7 && sub.status === 'active'
-                                            ? 'bg-yellow-50/40 hover:bg-yellow-50'
+                                            ? 'bg-red-50/50 hover:bg-red-50'
+                                            : days <= 3 && sub.status === 'active'
+                                            ? 'bg-yellow-50/50 hover:bg-yellow-50'
                                             : 'hover:bg-primary-50/40';
                                         return (
                                             <tr

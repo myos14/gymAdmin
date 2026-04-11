@@ -361,65 +361,85 @@ function MembersList() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                                 <tr>
-                                    {['Miembro','Email','Teléfono','Suscripción','Vence'].map(h => (
-                                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            {h}
+                                    {[
+                                        { label: 'Miembro', width: '30%' },
+                                        { label: 'Email', width: '20%' },
+                                        { label: 'Teléfono', width: '20%' },
+                                        { label: 'Suscripción', width: '20%' },
+                                        { label: 'Vence', width: '10%' },
+                                    ].map(({ label, width }) => (
+                                        <th
+                                            key={label}
+                                            style={{ width }}
+                                            className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                                        >
+                                            {label}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {members.map(m => (
-                                    <tr
-                                        key={m.id}
-                                        onClick={() => setDrawerMember(m)}
-                                        className="hover:bg-primary-50/40 transition cursor-pointer"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <MemberAvatar member={m} size="sm" />
-                                                <span className="text-sm font-medium text-gray-900">
-                                                    {m.first_name} {m.last_name_paternal}
-                                                    {m.last_name_maternal && ` ${m.last_name_maternal}`}
+                                {members.map(m => {
+                                    const days = m.active_subscription?.end_date
+                                        ? Math.ceil((new Date(m.active_subscription.end_date + 'T00:00:00') - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / 86400000)
+                                        : null;
+
+                                    const rowColor = days !== null && days <= 0  ? 'bg-red-50/50 hover:bg-red-50' :
+                                                    days !== null && days <= 3  ? 'bg-yellow-50/50 hover:bg-yellow-50' :
+                                                    'hover:bg-primary-50/40';
+
+                                    return(
+                                        <tr
+                                            key={m.id}
+                                            onClick={() => setDrawerMember(m)}
+                                            className={`cursor-pointer transition ${rowColor}`}
+                                        >
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <MemberAvatar member={m} size="sm" />
+                                                    <span className="text-sm font-medium text-gray-900">
+                                                        {m.first_name} {m.last_name_paternal}
+                                                        {m.last_name_maternal && ` ${m.last_name_maternal}`}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {m.email
+                                                    ? <span className="text-sm text-gray-600">{m.email}</span>
+                                                    : <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Sin registro</span>}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {m.phone
+                                                    ? <span className="text-sm text-gray-600">{m.phone}</span>
+                                                    : <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Sin registro</span>}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-1 text-xs rounded-full font-medium ${m.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {m.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {m.email
-                                                ? <span className="text-sm text-gray-600">{m.email}</span>
-                                                : <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Sin registro</span>}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {m.phone
-                                                ? <span className="text-sm text-gray-600">{m.phone}</span>
-                                                : <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Sin registro</span>}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${m.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {m.is_active ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {m.active_subscription?.end_date ? (
-                                                (() => {
-                                                    const days = Math.ceil((new Date(m.active_subscription.end_date + 'T00:00:00') - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / 86400000);
-                                                    return (
-                                                        <span className={`text-xs font-medium ${
-                                                            days <= 0  ? 'text-red-600' :
-                                                            days <= 7  ? 'text-yellow-600' :
-                                                            days <= 15 ? 'text-orange-500' :
-                                                                        'text-gray-500'
-                                                        }`}>
-                                                            {days <= 0 ? 'Vencida' : `${days} días`}
-                                                        </span>
-                                                    );
-                                                })()
-                                            ) : (
-                                                <span className="text-xs text-gray-300">—</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {m.active_subscription?.end_date ? (
+                                                    (() => {
+                                                        const days = Math.ceil((new Date(m.active_subscription.end_date + 'T00:00:00') - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / 86400000);
+                                                        return (
+                                                            <span className={`text-xs font-medium ${
+                                                                days <= 0  ? 'text-red-600' :
+                                                                days <= 3  ? 'text-yellow-600' :
+                                                                days <= 7 ? 'text-orange-500' :
+                                                                            'text-gray-500'
+                                                            }`}>
+                                                                {days <= 0 ? 'Vencida' : `${days} días`}
+                                                            </span>
+                                                        );
+                                                    })()
+                                                ) : (
+                                                    <span className="text-xs text-gray-300">—</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )})
+                                }
                             </tbody>
                         </table>
                     </div>

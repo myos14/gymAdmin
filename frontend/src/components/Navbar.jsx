@@ -52,7 +52,7 @@ function Navbar() {
                         <div className="flex items-center gap-6">
                             <button
                                 onClick={() => setIsNewMembershipModalOpen(true)}
-                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm"
+                                className="px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors font-medium text-sm"
                             >
                                 Registro
                             </button>

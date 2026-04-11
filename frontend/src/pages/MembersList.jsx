@@ -361,7 +361,7 @@ function MembersList() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                                 <tr>
-                                    {['Miembro','Email','Teléfono','Estado','Suscripción','Acciones'].map(h => (
+                                    {['Miembro','Email','Teléfono','Estado','Suscripción','Vence'].map(h => (
                                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                             {h}
                                         </th>
@@ -400,21 +400,30 @@ function MembersList() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${m.active_subscription ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                                m.active_subscription ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                            }`}>
                                                 {m.active_subscription ? 'Activa' : 'Sin suscripción'}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => setCheckInMember(m)}
-                                                    className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition" title="Check-in">
-                                                    <UserCheck className="h-4 w-4" />
-                                                </button>
-                                                <button onClick={() => setEditingMember(m)}
-                                                    className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="Editar">
-                                                    <Edit className="h-4 w-4" />
-                                                </button>
-                                            </div>
+                                        <td className="px-4 py-3">
+                                            {m.active_subscription?.end_date ? (
+                                                (() => {
+                                                    const days = Math.ceil((new Date(m.active_subscription.end_date + 'T00:00:00') - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / 86400000);
+                                                    return (
+                                                        <span className={`text-xs font-medium ${
+                                                            days <= 0  ? 'text-red-600' :
+                                                            days <= 7  ? 'text-yellow-600' :
+                                                            days <= 15 ? 'text-orange-500' :
+                                                                        'text-gray-500'
+                                                        }`}>
+                                                            {days <= 0 ? 'Vencida' : `${days} días`}
+                                                        </span>
+                                                    );
+                                                })()
+                                            ) : (
+                                                <span className="text-xs text-gray-300">—</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

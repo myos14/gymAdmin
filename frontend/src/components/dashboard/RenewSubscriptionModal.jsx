@@ -41,48 +41,43 @@ function RenewSubscriptionModal({ subscription, onClose, onSuccess }) {
     };
 
     const calculateStartDate = () => {
-        // If the subscription hasn't expired yet, start from the day after the expiration
-        const today = new Date();
-        const subEndDate = new Date(subscription.end_date);
-        
-        let startDate;
-        if (subEndDate >= today) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const subEndStr = subscription.end_date;
 
-            startDate = new Date(subEndDate);
-            startDate.setDate(startDate.getDate() + 1);
+        let startStr;
+        if (subEndStr >= todayStr) {
+            const [year, month, day] = subEndStr.split('-').map(Number);
+            const next = new Date(year, month - 1, day + 1);
+            startStr = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
         } else {
-            startDate = today;
+            startStr = todayStr;
         }
-        
-        setFormData(prev => ({
-            ...prev,
-            start_date: startDate.toISOString().split('T')[0]
-        }));
+
+        setFormData(prev => ({ ...prev, start_date: startStr }));
     };
 
     const calculateEndDate = () => {
-        const plan = plans.find(p => p.id === parseInt(formData.plan_id));
-        if (!plan || !formData.start_date) return;
+    const plan = plans.find(p => p.id === parseInt(formData.plan_id));
+    if (!plan || !formData.start_date) return;
 
-        setSelectedPlan(plan);
+    setSelectedPlan(plan);
 
-        const start = new Date(formData.start_date + 'T00:00:00');
-        const days = plan.duration_days;
-        let end = new Date(start);
+    const [y, m, d] = formData.start_date.split('-').map(Number);
+    const end = new Date(y, m - 1, d);
+    const days = plan.duration_days;
 
-        if (days === 0 || days > 36500) {
-            setEndDate(null);
-            return;
-        } else if (days === 30)  { end.setMonth(end.getMonth() + 1); }
-        else if (days === 60)    { end.setMonth(end.getMonth() + 2); }
-        else if (days === 90)    { end.setMonth(end.getMonth() + 3); }
-        else if (days === 180)   { end.setMonth(end.getMonth() + 6); }
-        else if (days === 365)   { end.setFullYear(end.getFullYear() + 1); }
-        else if (days === 1)     { /* same day */ }
-        else                     { end.setDate(end.getDate() + days - 1); }
+    if (days === 0 || days > 36500) { setEndDate(null); return; }
+    else if (days === 30)  { end.setMonth(end.getMonth() + 1); }
+    else if (days === 60)  { end.setMonth(end.getMonth() + 2); }
+    else if (days === 90)  { end.setMonth(end.getMonth() + 3); }
+    else if (days === 180) { end.setMonth(end.getMonth() + 6); }
+    else if (days === 365) { end.setFullYear(end.getFullYear() + 1); }
+    else if (days !== 1)   { end.setDate(end.getDate() + days - 1); }
 
-        setEndDate(end.toISOString().split('T')[0]);
-    };
+    const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+    setEndDate(endStr);
+};
 
     const handleChange = (e) => {
         const { name, value } = e.target;

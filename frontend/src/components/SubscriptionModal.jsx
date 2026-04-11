@@ -108,11 +108,27 @@ function SubscriptionModal({ onClose, onSuccess }) {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
         
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
+        if (name === 'payment_status' && value === 'paid' && selectedPlan) {
+            setFormData(prev => ({ 
+                ...prev, 
+                [name]: value,
+                amount_paid: selectedPlan.price.toString()
+            }));
+            return;
         }
+        
+        if (name === 'payment_status' && value === 'pending') {
+            setFormData(prev => ({ 
+                ...prev, 
+                [name]: value,
+                amount_paid: '0.00'
+            }));
+            return;
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     };
 
     const validate = () => {

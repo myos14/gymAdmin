@@ -178,32 +178,22 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* ── Fila 3: Operacional ── */}
+            {/* ── Fila 3: Operacional + Cumpleaños + Género ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <ExpiringSubscriptions
-                        subscriptions={dashboardData?.expiring_subscriptions || []}
-                        loading={loading}
-                        onRefresh={loadDashboard}
-                    />
-                </div>
-                <div className="lg:col-span-1">
-                    <RecentPayments
-                        payments={dashboardData?.recent_payments || []}
-                        loading={loading}
-                    />
-                </div>
-            </div>
-
-            {/* ── Fila 4: Cumpleaños + Género ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                <ExpiringSubscriptions
+                    subscriptions={dashboardData?.expiring_subscriptions || []}
+                    loading={loading}
+                    onRefresh={loadDashboard}
+                />
+                <RecentPayments
+                    payments={dashboardData?.recent_payments || []}
+                    loading={loading}
+                />
+                <div className="flex flex-col gap-6">
                     <UpcomingBirthdays
                         birthdays={dashboardData?.upcoming_birthdays || []}
                         loading={loading}
                     />
-                </div>
-                <div className="lg:col-span-1">
                     <GenderChart data={dashboardData?.gender_stats} loading={loading} />
                 </div>
             </div>

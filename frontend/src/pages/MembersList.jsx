@@ -361,7 +361,7 @@ function MembersList() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
                                 <tr>
-                                    {['Miembro','Email','Teléfono','Estado','Suscripción','Vence'].map(h => (
+                                    {['Miembro','Email','Teléfono','Suscripción','Vence'].map(h => (
                                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                             {h}
                                         </th>
@@ -397,13 +397,6 @@ function MembersList() {
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-1 text-xs rounded-full font-medium ${m.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                 {m.is_active ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                                m.active_subscription ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
-                                            }`}>
-                                                {m.active_subscription ? 'Activa' : 'Sin suscripción'}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">

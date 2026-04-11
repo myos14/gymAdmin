@@ -24,7 +24,7 @@ Como regalo, hoy tienes *10% de descuento* en cualquier suscripción.`;
         return (
             <InfoCard 
                 title="Próximos cumpleaños"
-                subtitle="Sigueintes 5 días"
+                subtitle="Siguientes 5 días"
             >
                 <div className="animate-pulse space-y-3">
                     {[1, 2, 3].map(i => (
@@ -61,14 +61,18 @@ Como regalo, hoy tienes *10% de descuento* en cualquier suscripción.`;
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {b.phone && (
-                                        <button
-                                            onClick={() => handleWhatsApp(b.phone, b.full_name)}
-                                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
-                                            title="Enviar felicitación por WhatsApp"
-                                        >
-                                            <Phone className="h-4 w-4" />
-                                        </button>
+                                    {b.days_until === 0 && (
+                                        b.phone ? (
+                                            <button
+                                                onClick={() => handleWhatsApp(b.phone, b.full_name)}
+                                                title="Enviar felicitación por WhatsApp"
+                                                className="p-1.5 text-green-500 hover:bg-green-50 rounded-md transition-colors"
+                                            >
+                                                <Phone className="h-4 w-4" />
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 italic">Sin tel. </span>
+                                        )
                                     )}
                                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>
                                         {badge.label}

@@ -95,7 +95,7 @@ def get_expiring_subscriptions(db: Session, days: int = 7) -> List[ExpiringSubsc
     ).filter(
         and_(
             Subscription.status == "active",
-            Subscription.end_date > today,
+            Subscription.end_date >= today,
             Subscription.end_date <= end_date
         )
     ).order_by(Subscription.end_date.asc()).all()

@@ -165,21 +165,43 @@ def get_reports_summary(
         Member, Attendance.member_id == Member.id
     ).order_by(desc(Attendance.check_in_time)).limit(20).all()
     
-    # Hourly distribution
-    hourly_dist = db.query(
+    # Hourly distribution by gender
+    hourly_gender_raw = db.query(
         func.extract('hour', Attendance.check_in_time).label('hour'),
+        Member.gender,
         func.count(Attendance.id).label('count')
+    ).join(
+        Member, Attendance.member_id == Member.id
     ).filter(
         Attendance.date >= start_date,
         Attendance.date <= today
     ).group_by(
-        func.extract('hour', Attendance.check_in_time)
+        func.extract('hour', Attendance.check_in_time),
+        Member.gender
     ).order_by('hour').all()
 
-    # Fill all hours 0-23 with 0 if no data
-    hourly_map = {int(r.hour): r.count for r in hourly_dist}
+    # Build hourly map with gender breakdown
+    hourly_gender_map = {}
+    for r in hourly_gender_raw:
+        h = int(r.hour)
+        if h not in hourly_gender_map:
+            hourly_gender_map[h] = {'masculino': 0, 'femenino': 0, 'otro': 0}
+        g = (r.gender or '').lower()
+        if g in ('masculino', 'm', 'hombre'):
+            hourly_gender_map[h]['masculino'] += r.count
+        elif g in ('femenino', 'f', 'mujer'):
+            hourly_gender_map[h]['femenino'] += r.count
+        else:
+            hourly_gender_map[h]['otro'] += r.count
+
     hourly_distribution = [
-        {"hour": h, "count": hourly_map.get(h, 0)}
+        {
+            "hour": h,
+            "count": sum(hourly_gender_map.get(h, {}).values()),
+            "masculino": hourly_gender_map.get(h, {}).get('masculino', 0),
+            "femenino":  hourly_gender_map.get(h, {}).get('femenino',  0),
+            "otro":      hourly_gender_map.get(h, {}).get('otro',      0),
+        }
         for h in range(24)
     ]
 

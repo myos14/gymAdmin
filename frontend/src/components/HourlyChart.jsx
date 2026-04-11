@@ -9,7 +9,7 @@ function HourlyChart({ data }) {
         if (!canvas || !hours.length) return;
         const ctx = canvas.getContext('2d');
         const W = canvas.width, H = canvas.height;
-        const padL = 28, padR = 12, padT = 20, padB = 28;
+        const padL = 28, padR = 12, padT = 24, padB = 28;
         const chartW = W - padL - padR;
         const chartH = H - padT - padB;
         const maxCount = Math.max(...hours.map(d => d.count), 1);
@@ -19,33 +19,58 @@ function HourlyChart({ data }) {
         ctx.clearRect(0, 0, W, H);
 
         hours.forEach((d, i) => {
-            const barH   = (d.count / maxCount) * chartH;
             const x      = padL + i * barW;
-            const y      = padT + chartH - barH;
             const isPeak = d.hour === peak.hour && peak.count > 0;
+            const totalH = (d.count / maxCount) * chartH;
 
-            if (barH > 0) {
-                ctx.beginPath();
-                ctx.roundRect(x + barW * 0.1, y, barW * 0.8, barH, [3, 3, 0, 0]);
-                ctx.fillStyle = isPeak ? '#1d4ed8' : '#93c5fd';
-                ctx.fill();
+            if (d.count > 0) {
+                const mH = (d.masculino / d.count) * totalH;
+                const fH = (d.femenino  / d.count) * totalH;
+                const oH = totalH - mH - fH;
+                let yOff = padT + chartH - totalH;
+
+                // masculino — azul
+                if (mH > 0) {
+                    ctx.beginPath();
+                    ctx.roundRect(x + barW * 0.15, yOff, barW * 0.7, mH, i === 0 ? [3,3,0,0] : [3,3,0,0]);
+                    ctx.fillStyle = isPeak ? '#1d4ed8' : '#93c5fd';
+                    ctx.fill();
+                    yOff += mH;
+                }
+                // femenino — rosa
+                if (fH > 0) {
+                    ctx.beginPath();
+                    ctx.rect(x + barW * 0.15, yOff, barW * 0.7, fH);
+                    ctx.fillStyle = isPeak ? '#ec4899' : '#f9a8d4';
+                    ctx.fill();
+                    yOff += fH;
+                }
+                // otro — gris
+                if (oH > 0.5) {
+                    ctx.beginPath();
+                    ctx.rect(x + barW * 0.15, yOff, barW * 0.7, oH);
+                    ctx.fillStyle = '#d1d5db';
+                    ctx.fill();
+                }
             }
 
-            // etiqueta cada hora
+            // etiqueta hora
             ctx.fillStyle = '#9ca3af';
             ctx.font = '20px sans-serif';
             ctx.textAlign = 'center';
-            const label = d.hour === 0 ? '12a' : d.hour < 12 ? `${d.hour}a` : d.hour === 12 ? '12p' : `${d.hour - 12}p`;
+            const label = d.hour < 12 ? `${d.hour}a` : d.hour === 12 ? '12p' : `${d.hour - 12}p`;
             ctx.fillText(label, x + barW / 2, H - padB + 16);
 
+            // valor encima del pico
             if (isPeak && peak.count > 0) {
                 ctx.fillStyle = '#1d4ed8';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(d.count, x + barW / 2, y - 6);
+                ctx.fillText(d.count, x + barW / 2, padT + chartH - totalH - 6);
             }
         });
 
+        // línea base
         ctx.beginPath();
         ctx.moveTo(padL, padT + chartH);
         ctx.lineTo(W - padR, padT + chartH);
@@ -56,17 +81,17 @@ function HourlyChart({ data }) {
 
     useEffect(() => {
         if (!data?.length) return;
-        const am = data.filter(d => d.hour >= 6 && d.hour <= 11);
-        const pm = data.filter(d => d.hour >= 12 && d.hour <= 21);
-        drawChart(amRef.current, am);
-        drawChart(pmRef.current, pm);
+        drawChart(amRef.current, data.filter(d => d.hour >= 6 && d.hour <= 11));
+        drawChart(pmRef.current, data.filter(d => d.hour >= 12 && d.hour <= 21));
     }, [data]);
 
     if (!data?.length) return null;
 
-    const visible   = data.filter(d => d.hour >= 6 && d.hour <= 21);
+    const visible   = data.filter(d => d.hour >= 5 && d.hour <= 23);
     const peak      = visible.reduce((a, b) => b.count > a.count ? b : a, visible[0]);
     const total     = visible.reduce((s, d) => s + d.count, 0);
+    const totalM    = visible.reduce((s, d) => s + (d.masculino || 0), 0);
+    const totalF    = visible.reduce((s, d) => s + (d.femenino  || 0), 0);
     const peakLabel = peak.hour < 12 ? `${peak.hour}am` : peak.hour === 12 ? '12pm' : `${peak.hour - 12}pm`;
 
     return (
@@ -97,6 +122,24 @@ function HourlyChart({ data }) {
                     <div className="text-xl font-bold text-gray-700">{total}</div>
                     <div className="text-xs text-gray-500 mt-0.5">Total periodo</div>
                 </div>
+            </div>
+
+            {/* leyenda género */}
+            <div className="flex items-center gap-4 px-1">
+                <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm bg-blue-300 flex-shrink-0" />
+                    <span className="text-xs text-gray-600">Hombres <strong>{totalM}</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm bg-pink-300 flex-shrink-0" />
+                    <span className="text-xs text-gray-600">Mujeres <strong>{totalF}</strong></span>
+                </div>
+                {total - totalM - totalF > 0 && (
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-sm bg-gray-300 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">N/D <strong>{total - totalM - totalF}</strong></span>
+                    </div>
+                )}
             </div>
 
             {/* AM */}

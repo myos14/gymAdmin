@@ -325,7 +325,7 @@ function Reports() {
                         <p className="text-center text-gray-400 py-8 text-sm">Sin datos</p>
                     ) : (
                         <div className="space-y-2">
-                            {data.attendance.top_members.slice(0, 7).map((member, i) => (
+                            {data.attendance.top_members.slice(0, 5).map((member, i) => (
                                 <div
                                     key={member.id}
                                     onClick={() => handleViewMember(member.id)}

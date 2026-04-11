@@ -102,7 +102,7 @@ function RetentionCard({ loading }) {
                 <div className="flex-1 flex flex-col gap-4">
                     {/* donut */}
                     <div className="flex justify-center">
-                        <canvas ref={canvasRef} width={140} height={140} />
+                        <canvas ref={canvasRef} width={180} height={180} />
                     </div>
 
                     {/* bars */}

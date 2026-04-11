@@ -164,6 +164,24 @@ def get_reports_summary(
     ).join(
         Member, Attendance.member_id == Member.id
     ).order_by(desc(Attendance.check_in_time)).limit(20).all()
+    
+    # Hourly distribution
+    hourly_dist = db.query(
+        func.extract('hour', Attendance.check_in_time).label('hour'),
+        func.count(Attendance.id).label('count')
+    ).filter(
+        Attendance.date >= start_date,
+        Attendance.date <= today
+    ).group_by(
+        func.extract('hour', Attendance.check_in_time)
+    ).order_by('hour').all()
+
+    # Fill all hours 0-23 with 0 if no data
+    hourly_map = {int(r.hour): r.count for r in hourly_dist}
+    hourly_distribution = [
+        {"hour": h, "count": hourly_map.get(h, 0)}
+        for h in range(24)
+    ]
 
     return {
         "plan_metrics": [
@@ -209,6 +227,7 @@ def get_reports_summary(
         "attendance": {
             "total": total_attendance,
             "daily_avg": daily_avg,
+            "hourly_distribution": hourly_distribution,
             "top_members": [
                 {
                     "id": m.id,
